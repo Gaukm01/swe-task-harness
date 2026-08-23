@@ -1,0 +1,9 @@
+runs/
+.env
+harness.db
+CLAUDE.md
+docs/
+.venv/
+__pycache__/
+
+.DS_Store
