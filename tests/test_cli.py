@@ -55,9 +55,9 @@ def test_unknown_command_is_a_usage_error():
 
 
 def test_pending_command_raises_a_typed_error():
-    result = runner.invoke(app, ["report", "01SOMERUN"])
+    result = runner.invoke(app, ["ui"])
     assert isinstance(result.exception, HarnessError)
-    assert "M5" in (result.exception.fix or "")
+    assert "M8" in (result.exception.fix or "")
 
 
 # -- lint -----------------------------------------------------------------

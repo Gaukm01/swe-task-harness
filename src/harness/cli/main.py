@@ -29,6 +29,7 @@ from harness.cli.render import (
     render_check_report,
     render_error,
     render_invocation,
+    render_run_result,
     render_show_tests,
     render_unexpected,
     render_validation,
@@ -49,9 +50,13 @@ from harness.core.errors import (
 )
 from harness.core.ids import new_ulid
 from harness.core.phases import BaseResult, Phase, prepare_base, validate_task
+from harness.core.results import Bucket, TestOutcome, TestStatus
+from harness.core.run import execute_run
+from harness.report import build_report, write_report
+from harness.solvers import resolve_solver
 from harness.runtime.docker import DockerRuntime
 from harness.runtime.probe import collect_doctor_report
-from harness.store.db import DEFAULT_DB_FILENAME, Store
+from harness.store.db import DEFAULT_DB_FILENAME, Store, utc_now
 
 LAST = "last"
 
@@ -276,9 +281,122 @@ def run(
     max_cost_usd: Annotated[
         float | None, typer.Option("--max-cost-usd", help="Agent spend ceiling.")
     ] = None,
+    no_cache: Annotated[
+        bool, typer.Option("--no-cache", help="Ignore cached snapshots and baselines.")
+    ] = False,
 ) -> None:
     """Validate the baseline, run a solver, grade the result, and write a report."""
-    _pending("run", "M5")
+    solver_impl = resolve_solver(solver)
+    loaded, base = _ensure_base(bundle, no_cache=no_cache)
+    store = state.require_store()
+
+    run_id = new_ulid()
+    artifact_dir = Path("runs") / run_id
+    started_at = utc_now()
+
+    # Invariant 3: a cached baseline is acceptable only when the bundle digest
+    # *and* the environment cache key both match. Anything else re-validates.
+    cached = (
+        None
+        if no_cache
+        else store.find_validation(
+            bundle_digest=loaded.digest, cache_key=base.cache_key
+        )
+    )
+    cached_baseline = _decode_baseline(cached) if cached else None
+
+    runtime = DockerRuntime()
+    result = execute_run(
+        runtime,
+        loaded,
+        base,
+        solver_impl,
+        run_id=run_id,
+        artifact_dir=artifact_dir,
+        cached_baseline=cached_baseline,
+    )
+
+    if cached_baseline is None:
+        store.record_validation(
+            bundle_digest=loaded.digest,
+            cache_key=base.cache_key,
+            outcomes=[
+                {
+                    "test_id": o.test_id,
+                    "bucket": o.bucket.value,
+                    "status": o.status.value,
+                    "duration_ms": o.duration_ms,
+                    "message": o.message,
+                }
+                for o in result.baseline
+            ],
+        )
+
+    diff_path = artifact_dir / "solution.diff"
+    diff_path.parent.mkdir(parents=True, exist_ok=True)
+    diff_path.write_text(result.solution_diff)
+
+    report = build_report(
+        result,
+        artifacts={"solution_diff": str(diff_path), "report_json": str(artifact_dir / "report.json")},
+    )
+    report_path = write_report(report, artifact_dir / "report.json")
+
+    _persist_run(store, result, started_at, report_path, diff_path)
+    render_run_result(result, report_path=report_path)
+
+
+def _decode_baseline(rows: list[dict[str, object]]) -> list[TestOutcome]:
+    """Rebuild baseline outcomes from a cached validation event."""
+    return [
+        TestOutcome(
+            test_id=str(row["test_id"]),
+            bucket=Bucket(str(row["bucket"])),
+            status=TestStatus(str(row["status"])),
+            duration_ms=int(row.get("duration_ms") or 0),
+            message=(str(row["message"]) if row.get("message") else None),
+        )
+        for row in rows
+    ]
+
+
+def _persist_run(store: Store, result: object, started_at: str, report_path: Path, diff_path: Path) -> None:
+    """Write the run, its per-test results, and its artifacts to SQLite."""
+    import hashlib
+
+    from harness.core.run import RunResult
+
+    assert isinstance(result, RunResult)
+    store.record_run(
+        run_id=result.run_id,
+        invocation_id=state.invocation_id,
+        task_id=result.bundle.spec.task_id,
+        bundle_digest=result.bundle.digest,
+        image_digest=result.base.image,
+        cache_key=result.base.cache_key,
+        solver_kind=result.solver.kind,
+        solver_model=result.solver.model,
+        phase_reached=Phase.SCORED.value,
+        outcome=result.outcome.value,
+        gaming_flags=result.gaming_flags,
+        turns=result.solver.turns,
+        cost_usd=result.solver.cost_usd,
+        timings_ms=result.timings.as_dict(),
+        started_at=started_at,
+    )
+    for phase, outcomes in (("pre", result.baseline), ("post", result.post)):
+        store.record_test_results(
+            result.run_id,
+            phase,
+            [(o.test_id, o.bucket.value, o.status.value, o.duration_ms, o.message) for o in outcomes],
+        )
+    for kind, path in (("report_json", report_path), ("solution_diff", diff_path)):
+        store.record_artifact(
+            run_id=result.run_id,
+            kind=kind,
+            path=str(path),
+            sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        )
 
 
 @app.command()
@@ -295,8 +413,26 @@ def report(
     run_id: Annotated[str, typer.Argument(help="The run to regenerate artifacts for.")],
     fmt: Annotated[str, typer.Option("--format", help="json | html")] = "json",
 ) -> None:
-    """Regenerate the report artifacts for a recorded run."""
-    _pending("report", "M5")
+    """Print the stored report for a recorded run."""
+    if fmt == "html":
+        _pending("report --format html", "M8")
+    if fmt != "json":
+        raise UsageError(f"unknown format {fmt!r}.", fix="Use --format json (html lands in M8).")
+
+    stored = state.require_store().get_run(run_id)
+    if stored is None:
+        raise UsageError(
+            f"no run with id {run_id!r}.",
+            fix="List recorded runs with `task runs`.",
+        )
+    path = Path("runs") / run_id / "report.json"
+    if not path.is_file():
+        raise UsageError(
+            f"{path} is missing.",
+            fix="The run is recorded but its artifacts were deleted. Re-run the task.",
+        )
+    # stdout only, so it pipes into jq cleanly.
+    console.print_json(path.read_text())
 
 
 @app.command()

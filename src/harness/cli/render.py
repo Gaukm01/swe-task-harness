@@ -22,7 +22,8 @@ from harness.core.cache import CACHE_KEY_TAG_LEN
 from harness.core.checks import CheckReport, CheckStatus
 from harness.core.errors import HarnessError
 from harness.core.phases import BaseResult, PhaseAssertion, ValidationResult
-from harness.core.results import Bucket, TestStatus
+from harness.core.results import Bucket, Outcome, TestStatus, Transition
+from harness.core.run import RunResult
 
 # stdout for results, stderr for diagnostics -- so `task report --format json`
 # stays pipeable once it lands, and the invocation-id footer never corrupts it.
@@ -288,3 +289,79 @@ def render_show_tests(bundle: Bundle) -> None:
     console.print()
     console.print(Text("test_patch.diff", style="bold"))
     console.print(Syntax(bundle.test_patch, "diff", theme="ansi_dark", word_wrap=True))
+
+
+_TRANSITION_STYLE: dict[Transition, str] = {
+    Transition.FIXED: "bold green",
+    Transition.HELD: "green",
+    Transition.STILL_FAILING: "red",
+    Transition.REGRESSED: "bold red",
+    Transition.INCONCLUSIVE: "bold yellow",
+}
+
+_OUTCOME_STYLE: dict[Outcome, str] = {
+    Outcome.RESOLVED: "bold green",
+    Outcome.RESOLVED_SUSPECT: "bold yellow",
+    Outcome.UNRESOLVED: "bold red",
+    Outcome.INCONCLUSIVE: "bold yellow",
+}
+
+
+def render_run_result(result: RunResult, *, report_path: Path) -> None:
+    """Render a graded run: the verdict, the transitions, and the evidence."""
+    summary = result.summary
+
+    header = Table(
+        title=f"task run {result.bundle.spec.task_id}", title_justify="left", show_header=False
+    )
+    header.add_column("field", style="bold", no_wrap=True)
+    header.add_column("value", overflow="fold")
+    header.add_row("run", result.run_id)
+    header.add_row("solver", result.solver.kind + (f" · {result.solver.model}" if result.solver.model else ""))
+    header.add_row("base image", result.base.image)
+    header.add_row("solution diff", f"{len(result.solution_diff.splitlines())} lines")
+    header.add_row("report", str(report_path))
+    console.print(header)
+
+    table = Table(title="transitions", title_justify="left", header_style="bold")
+    table.add_column("bucket", width=6)
+    table.add_column("test", overflow="fold", ratio=3)
+    table.add_column("baseline")
+    table.add_column("post")
+    table.add_column("transition")
+    for item in result.transitions:
+        table.add_row(
+            Text(item.bucket.value, style="cyan" if item.bucket is Bucket.F2P else "blue"),
+            item.test_id,
+            _status_text(item.baseline),
+            _status_text(item.post),
+            Text(item.transition.value, style=_TRANSITION_STYLE.get(item.transition, "white")),
+        )
+    console.print()
+    console.print(table)
+
+    if result.gaming_flags:
+        # Prominent by design: these never change the pass/fail, so they have to
+        # be impossible to miss in the place a reader actually looks.
+        console.print()
+        console.print(Text("gaming flags", style="bold yellow"))
+        for flag in result.gaming_flags:
+            console.print(Text(f"  ! {flag}", style="yellow"))
+
+    if result.notes:
+        console.print()
+        for note in result.notes:
+            console.print(Text(f"note: {note}", style="dim"))
+
+    console.print()
+    console.print(
+        Text(
+            f"f2p fixed {summary['f2p_fixed']}/{summary['f2p_total']}  ·  "
+            f"p2p regressed {summary['p2p_regressed']}/{summary['p2p_total']}  ·  "
+            f"{result.timings.solve + result.timings.grade}ms solve+grade",
+            style="dim",
+        )
+    )
+    console.print(
+        Text(result.outcome.value.upper(), style=_OUTCOME_STYLE.get(result.outcome, "white"))
+    )

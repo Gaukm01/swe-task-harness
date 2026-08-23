@@ -29,7 +29,10 @@ from harness.core.cache import CACHE_KEY_TAG_LEN
 from harness.core.errors import BaselineValidationError
 from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.runtime import ContainerRuntime, ContainerSpec, ExecResult
+from harness.core.gaming import is_test_infrastructure
+from harness.core.globs import matches_any
 from harness.core.testrun import CONTAINER_ARTIFACT_DIR, TestRun, run_selectors
+from harness.solvers.base import Solver, SolverContext, SolverResult
 
 # Where the harness expects a repo to live. An image that ships the code
 # somewhere else declares it as `environment.repo_path_in_image`, and the path
@@ -613,3 +616,243 @@ def validate_task(
             assertion.retained = False
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# The run lane: BASE -> SOLVE -> SCORED
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SolveResult:
+    """What the SOLVE phase produced."""
+
+    image: str
+    diff: str
+    solver: SolverResult
+    steps: list[StepLog] = field(default_factory=list)
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.diff.strip()
+
+
+def compute_solution_diff(
+    runtime: ContainerRuntime, container_id: str, spec: TaskSpec, steps: list[StepLog]
+) -> str:
+    """Stage everything and diff it against the synthetic base commit.
+
+    Invariant 7. The diff is computed by the harness, from the container's own
+    git, against a commit the harness created -- never taken from whatever the
+    solver claims it did. `git add -A` picks up new files and deletions, which
+    a model-emitted patch routinely gets wrong.
+    """
+    root = repo_root(spec)
+    _require(
+        _record(steps, "stage solution", runtime.exec(container_id, _git(root, "add", "--all"))),
+        "staging the solution",
+        fix="The repo inside the solve container is not a usable git repo.",
+    )
+    result = _require(
+        _record(
+            steps,
+            "compute solution.diff",
+            runtime.exec(container_id, _git(root, "diff", "--cached", "HEAD")),
+        ),
+        "computing the solution diff",
+        fix="The repo inside the solve container is not a usable git repo.",
+    )
+    return result.stdout
+
+
+def run_solver(
+    runtime: ContainerRuntime,
+    bundle: Bundle,
+    base: BaseResult,
+    solver: Solver,
+    *,
+    run_id: str,
+    keep_snapshot: bool = True,
+) -> SolveResult:
+    """The SOLVE phase: fresh from BASE, no network, solver runs, diff computed.
+
+    Branches from BASE, never from GUARDED or GOLD -- those have the guardrail
+    tests on disk, and starting from one would hand the solver the hidden
+    tests. That is invariant 1, and it is why this takes `base` rather than a
+    generic image reference.
+    """
+    spec = bundle.spec
+    root = repo_root(spec)
+    steps: list[StepLog] = []
+
+    spec_for_container = ContainerSpec(
+        image=base.image, platform=spec.environment.platform, workdir=root
+    ).hardened()
+
+    container_id = runtime.create(spec_for_container)
+    try:
+        context = SolverContext(
+            runtime=runtime,
+            container_id=container_id,
+            repo_root=root,
+            description=bundle.description,
+            timeout_s=spec.tests.timeout_s,
+        )
+        solver_result = solver.solve(context, bundle)
+        diff = compute_solution_diff(runtime, container_id, spec, steps)
+        image = runtime.commit(container_id, phase_tag(spec.task_id, run_id, Phase.SOLVE))
+    finally:
+        runtime.remove_container(container_id, force=True)
+
+    if not keep_snapshot:
+        runtime.remove_image(image, force=True)
+
+    return SolveResult(image=image, diff=diff, solver=solver_result, steps=steps)
+
+
+def force_restore_tests(
+    runtime: ContainerRuntime,
+    container_id: str,
+    spec: TaskSpec,
+    steps: list[StepLog],
+) -> list[str]:
+    """Undo any change the solver made to a test file. Invariant 2.
+
+    Two directions, both necessary:
+
+    * **Restore.** Every tracked path matching `test_path_globs` is checked out
+      from the synthetic base commit, undoing edits and deletions.
+    * **Remove.** Any *untracked* file matching the globs is deleted. Without
+      this, a solver could add a `conftest.py` with an autouse fixture that
+      fakes results, and restoring tracked files alone would leave it in place.
+
+    Scope is `test_path_globs` plus a narrow set of pure test-runner config
+    files (`conftest.py`, `pytest.ini`, `jest.config.*`) -- a root `conftest.py`
+    matches no `tests/**` glob but can fake every result in the suite. Files
+    that mix test config with real project config (`pyproject.toml`,
+    `setup.cfg`, `package.json`) are deliberately *not* restored, because a
+    genuine fix may need to change them; those are covered by a gaming flag.
+
+    Returns the paths it acted on, so the run log can show that it did.
+    """
+    root = repo_root(spec)
+    globs = spec.tests.test_path_globs
+
+    tracked = _record(
+        steps,
+        "list tracked files",
+        runtime.exec(container_id, _git(root, "ls-tree", "-r", "--name-only", "HEAD")),
+    )
+    tracked_tests = [
+        path
+        for path in tracked.stdout.splitlines()
+        if path and (matches_any(path, globs) or is_test_infrastructure(path))
+    ]
+    if tracked_tests:
+        _require(
+            _record(
+                steps,
+                f"restore {len(tracked_tests)} test file(s) from base",
+                runtime.exec(container_id, _git(root, "checkout", "HEAD", "--", *tracked_tests)),
+            ),
+            "restoring test files from the base commit",
+            fix="The solve container's repo is not in a usable git state.",
+        )
+
+    present = _record(
+        steps,
+        "list working tree",
+        runtime.exec(
+            container_id,
+            _git(root, "ls-files", "--others", "--exclude-standard"),
+        ),
+    )
+    added_tests = [
+        path
+        for path in present.stdout.splitlines()
+        if path and (matches_any(path, globs) or is_test_infrastructure(path))
+    ]
+    if added_tests:
+        # A solver-added conftest.py is the interesting case: it never appears
+        # in HEAD, so a restore-only implementation would leave it running.
+        _record(
+            steps,
+            f"remove {len(added_tests)} solver-added test file(s)",
+            runtime.exec(
+                container_id, ["rm", "-f", *[f"{root}/{path}" for path in added_tests]]
+            ),
+        )
+
+    return sorted({*tracked_tests, *added_tests})
+
+
+def grade_solution(
+    runtime: ContainerRuntime,
+    bundle: Bundle,
+    base: BaseResult,
+    solution_diff: str,
+    *,
+    run_id: str,
+    artifact_dir: Path,
+    keep_snapshot: bool = True,
+) -> tuple[TestRun, list[str], str]:
+    """The SCORED phase. Returns the test run, the restored paths, and the image.
+
+    Order is the whole guarantee:
+
+    1. fresh container **from BASE** -- not from SOLVE, which has whatever the
+       solver left lying around, and not from GUARDED, which has the tests
+    2. apply `solution.diff`
+    3. **force-restore** the test files
+    4. apply `test_patch.diff`
+    5. run the selectors
+
+    Steps 3 and 4 come after 2 on purpose. The solver's changes go on first so
+    that its *source* edits are present, and are then overwritten wherever they
+    touched a test.
+    """
+    spec = bundle.spec
+    root = repo_root(spec)
+    steps: list[StepLog] = []
+
+    container_id = runtime.create(
+        ContainerSpec(
+            image=base.image, platform=spec.environment.platform, workdir=root
+        ).hardened()
+    )
+    try:
+        if solution_diff.strip():
+            apply_patch(
+                runtime,
+                container_id,
+                spec,
+                patch_text=solution_diff,
+                label="solution",
+                steps=steps,
+            )
+        restored = force_restore_tests(runtime, container_id, spec, steps)
+        apply_patch(
+            runtime,
+            container_id,
+            spec,
+            patch_text=bundle.test_patch,
+            label="test_patch",
+            steps=steps,
+        )
+        run = run_selectors(
+            runtime,
+            container_id,
+            spec,
+            label="post",
+            workdir=root,
+            artifact_dir=artifact_dir,
+        )
+        image = runtime.commit(container_id, phase_tag(spec.task_id, run_id, Phase.SCORED))
+    finally:
+        runtime.remove_container(container_id, force=True)
+
+    if not keep_snapshot:
+        runtime.remove_image(image, force=True)
+
+    base.steps.extend(steps)
+    return run, restored, image

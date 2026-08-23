@@ -4,9 +4,9 @@ A CLI that packages SWE-bench-style coding tasks into Docker containers,
 validates them, runs an LLM coding agent against them, grades the result, and
 records everything in SQLite with a static HTML viewer.
 
-> **Status: milestone M4 (adapter + validate).** `task doctor`, `task lint`,
-> `task log`, `task init`, `task validate`, and `task show-tests` are
-> implemented. Every other command is registered with its final
+> **Status: milestone M5 (grading + report).** Everything except the agent
+> loop (`--solver agent` / `replay`, M6), the importer (M7), and the HTML UI
+> (M8). Every other command is registered with its final
 > argument contract and reports the milestone that lands it. The full README
 > with a quickstart arrives at M8.
 
@@ -24,8 +24,14 @@ uv run task lint examples/tiny-fixture   # validate a bundle, print its digest
 uv run task init examples/tiny-fixture   # build + snapshot the BASE phase
 uv run task validate examples/tiny-fixture   # assert the GUARDED and GOLD phases
 uv run task show-tests examples/tiny-fixture # what the guardrail tests actually are
+uv run task run examples/tiny-fixture --solver gold   # must grade `resolved`
+uv run task run examples/tiny-fixture --solver noop   # must grade `unresolved`
 uv run task log last                     # what the previous command did
 ```
+
+`gold` and `noop` are the harness's own regression suite and make zero API
+calls. `gold` applies the reference patch and must resolve; `noop` changes
+nothing and must leave every fail-to-pass test `still_failing`.
 
 `task init` builds the environment, truncates the repo's git history to a
 single synthetic commit, checks the test runner executes, and commits the
