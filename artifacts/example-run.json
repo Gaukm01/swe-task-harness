@@ -1,0 +1,103 @@
+{
+  "run_id": "01M0QQJ5QVEHYQHSY4NFJCWKS0",
+  "task_id": "ansible__ansible-12734fa-f617569fd6889f2211f75bc02a35f9f8",
+  "bundle_digest": "a9981223375298e1666914d8f6ba0fafaaa00c0716c1da70079921d60a13b63b",
+  "image": "harness/ansible__ansible-12734fa-f617569fd6889f2211f75bc02a35f9f8:base-4638f649eca8",
+  "base_commit": "de01db08d00c8d2438e1ba5989c313ba16a145b0",
+  "solver": {
+    "kind": "gold",
+    "model": null,
+    "turns": 0,
+    "cost_usd": 0.0,
+    "summary": "applied the gold patch verbatim"
+  },
+  "outcome": "resolved",
+  "gaming_flags": [],
+  "summary": {
+    "f2p_fixed": 1,
+    "f2p_total": 1,
+    "p2p_regressed": 0,
+    "p2p_total": 4
+  },
+  "tests": [
+    {
+      "id": "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_ansible_vault_encrypted_unicode",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 27
+    },
+    {
+      "id": "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_bytes",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 1
+    },
+    {
+      "id": "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_undefined",
+      "bucket": "f2p",
+      "baseline": "failed",
+      "post": "passed",
+      "transition": "fixed",
+      "message": "yaml.representer.RepresenterError: ('cannot represent an object', AnsibleUndefined)\ntest/units/parsing/yaml/test_dumper.py:119: in test_undefined\n    yaml_out = self._dump_string(undefined_object, dumper=self.dumper)\ntest/units/mock/yaml_helper.py:30: in _dump_string\n    return yaml.dump(obj, Dumper=dumper)\n/usr/local/lib/python3.8/site-packages/yaml/__init__.py:290: in dump\n    return dump_all([data], stream, Dumper=Dumper, **kwds)\n/usr/local/lib/python3.8/site-packages/yaml/__init__.py:278: in dump_all\n    dumper.represent(data)\n/usr/local/lib/python3.8/site-packages/yaml/representer.py:27: in represent\n    node = self.represent_data(data)\n/usr/local/lib/python3.8/site-packages/yaml/representer.py:58: in represent_data\n    node = self.yaml_representers[None](self, data)\n/usr/local/lib/python3.8/site-packages/yaml/representer.py:231: in represent_undefined\n    raise RepresenterError(\"cannot represent an object\", data)\nE   yaml.representer.RepresenterError: ('cannot represent an object', AnsibleUndefined)",
+      "duration_ms": 2
+    },
+    {
+      "id": "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_unicode",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 1
+    },
+    {
+      "id": "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_vars_with_sources",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 1
+    }
+  ],
+  "timings_ms": {
+    "setup": 0,
+    "validate": 4325,
+    "solve": 1449,
+    "grade": 2706
+  },
+  "artifacts": {
+    "solution_diff": "runs/01M0QQJ5QVEHYQHSY4NFJCWKS0/solution.diff",
+    "report_json": "runs/01M0QQJ5QVEHYQHSY4NFJCWKS0/report.json"
+  },
+  "notes": [],
+  "restored_test_count": 3753,
+  "restored_test_paths": [
+    "examples/scripts/my_test.py",
+    "packaging/release/tests/version_helper_test.py",
+    "test/ansible_test/Makefile",
+    "test/ansible_test/unit/test_diff.py",
+    "test/ansible_test/validate-modules-unit/test_validate_modules_regex.py",
+    "test/integration/network-integration.cfg",
+    "test/integration/network-integration.requirements.txt",
+    "test/integration/targets/add_host/aliases",
+    "test/integration/targets/add_host/tasks/main.yml",
+    "test/integration/targets/adhoc/aliases",
+    "test/integration/targets/adhoc/runme.sh",
+    "test/integration/targets/ansiballz_python/aliases",
+    "test/integration/targets/ansiballz_python/library/check_rlimit_and_maxfd.py",
+    "test/integration/targets/ansiballz_python/library/custom_module.py",
+    "test/integration/targets/ansiballz_python/library/sys_check.py",
+    "test/integration/targets/ansiballz_python/module_utils/custom_util.py",
+    "test/integration/targets/ansiballz_python/tasks/main.yml",
+    "test/integration/targets/ansible-doc/aliases",
+    "test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/MANIFEST.json",
+    "test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/cache/notjsonfile.py"
+  ]
+}

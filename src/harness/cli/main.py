@@ -15,14 +15,18 @@ from __future__ import annotations
 
 import itertools
 import os
+import subprocess
 import sys
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from harness import __version__
+from rich.text import Text
+
 from harness.cli.render import (
     console,
     err_console,
@@ -32,6 +36,9 @@ from harness.cli.render import (
     render_invocation,
     render_instance_survey,
     render_run_result,
+    render_runs,
+    render_site_written,
+    render_shell_banner,
     render_show_tests,
     render_unexpected,
     render_validation,
@@ -53,10 +60,10 @@ from harness.core.errors import (
     UsageError,
 )
 from harness.core.ids import new_ulid
-from harness.core.phases import BaseResult, Phase, prepare_base, validate_task
+from harness.core.phases import BaseResult, Phase, phase_tag, prepare_base, validate_task
 from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.run import execute_run
-from harness.report import build_report, write_report
+from harness.report import build_report, render_single_run, render_site, write_report
 from harness.solvers import (
     DEFAULT_MAX_TURNS,
     DEFAULT_MODEL,
@@ -99,14 +106,6 @@ app = typer.Typer(
 )
 
 BundleArg = Annotated[Path, typer.Argument(help="Path to a task bundle directory.")]
-
-
-def _pending(command: str, milestone: str) -> None:
-    """Registered-but-unimplemented command: fail honestly, name the milestone."""
-    raise HarnessError(
-        f"`task {command}` is not implemented yet.",
-        fix=f"It lands in milestone {milestone}. Live so far: doctor, lint, log.",
-    )
 
 
 @app.callback(invoke_without_command=True)
@@ -207,7 +206,10 @@ def show_log(
         record = store.get_invocation(identifier)
         if record is None:
             if store.get_run(identifier) is not None:
-                _pending("log <run_id>", "M5")
+                raise UsageError(
+                    f"{identifier} is a run id, not an invocation id.",
+                    fix=f"Try `task report {identifier}` or `task runs`.",
+                )
             raise UsageError(
                 f"No invocation or run with id {identifier!r}.",
                 fix="Use `task log last`, or copy an id from a previous command's output.",
@@ -413,6 +415,9 @@ def run(
     report_path = write_report(report, artifact_dir / "report.json")
 
     _persist_run(store, result, started_at, report_path, diff_path)
+    # Regenerated after every run, so the browser view is never stale.
+    render_single_run(store, run_id, artifact_dir / "report.html", runs_dir=Path("runs"))
+    render_site(store, Path("site"))
     render_run_result(result, report_path=report_path)
 
 
@@ -473,9 +478,11 @@ def _persist_run(store: Store, result: object, started_at: str, report_path: Pat
 def runs(
     task_id: Annotated[str | None, typer.Option("--task", help="Filter by task id.")] = None,
     outcome: Annotated[str | None, typer.Option("--outcome", help="Filter by run outcome.")] = None,
+    limit: Annotated[int, typer.Option("--limit", help="How many runs to show.")] = 30,
 ) -> None:
     """List recorded runs."""
-    _pending("runs", "M8")
+    rows = state.require_store().list_runs(task_id=task_id, outcome=outcome, limit=limit)
+    render_runs(rows)
 
 
 @app.command()
@@ -485,7 +492,16 @@ def report(
 ) -> None:
     """Print the stored report for a recorded run."""
     if fmt == "html":
-        _pending("report --format html", "M8")
+        store = state.require_store()
+        if store.get_run(run_id) is None:
+            raise UsageError(
+                f"no run with id {run_id!r}.", fix="List recorded runs with `task runs`."
+            )
+        path = render_single_run(
+            store, run_id, Path("runs") / run_id / "report.html", runs_dir=Path("runs")
+        )
+        console.print(str(path))
+        return
     if fmt != "json":
         raise UsageError(f"unknown format {fmt!r}.", fix="Use --format json (html lands in M8).")
 
@@ -507,19 +523,64 @@ def report(
 
 @app.command()
 def ui(
-    out: Annotated[Path | None, typer.Option("--out", help="Directory to write HTML into.")] = None,
+    out: Annotated[
+        Path | None, typer.Option("--out", help="Directory to write HTML into.")
+    ] = None,
 ) -> None:
     """Regenerate the static HTML index and run pages from the database."""
-    _pending("ui", "M8")
+    destination = out or Path("site")
+    written = render_site(state.require_store(), destination)
+    render_site_written(written, destination)
 
 
 @app.command()
 def shell(
     run_id: Annotated[str, typer.Argument(help="The run whose snapshot to enter.")],
-    phase: Annotated[str, typer.Option("--phase", help="base | guarded | gold | solve | scored")],
+    phase: Annotated[
+        str, typer.Option("--phase", help="base | guarded | gold | solve | scored")
+    ] = "solve",
+    command: Annotated[
+        str | None, typer.Option("--command", help="Run this instead of an interactive shell.")
+    ] = None,
 ) -> None:
-    """Open a shell inside a recorded phase snapshot."""
-    _pending("shell", "M8")
+    """Open a shell inside a recorded phase snapshot.
+
+    The single best observability feature for the effort: every phase
+    transition is a `docker commit`, so any state the harness passed through
+    can be entered and poked at afterwards.
+    """
+    try:
+        wanted = Phase(phase.lower())
+    except ValueError:
+        raise UsageError(
+            f"unknown phase {phase!r}.",
+            fix="One of: " + ", ".join(p.value for p in Phase),
+        ) from None
+
+    stored = state.require_store().get_run(run_id)
+    if stored is None:
+        raise UsageError(f"no run with id {run_id!r}.", fix="List runs with `task runs`.")
+
+    runtime = DockerRuntime()
+    image = (
+        stored["image_digest"]
+        if wanted is Phase.BASE
+        else phase_tag(stored["task_id"], run_id, wanted)
+    )
+    if not runtime.image_exists(image):
+        raise UsageError(
+            f"no snapshot for phase {wanted.value} of run {run_id} ({image}).",
+            fix="A passing `task validate` discards its guarded/gold snapshots; re-run "
+            "with --keep-snapshots. `task gc` also removes old ones.",
+        )
+
+    render_shell_banner(image, wanted, run_id)
+    # Hands the terminal over: interactive, so it must not go through the
+    # capturing runtime wrapper.
+    argv = ["docker", "run", "--rm", "-it", "--entrypoint", "/bin/bash", image]
+    if command:
+        argv = ["docker", "run", "--rm", "--entrypoint", "/bin/bash", image, "-lc", command]
+    raise typer.Exit(subprocess.call(argv))
 
 
 @app.command("show-tests")
@@ -589,10 +650,56 @@ def import_instance(
 
 @app.command()
 def gc(
-    days: Annotated[int, typer.Option("--days", help="Remove snapshots older than N days.")] = 7,
+    days: Annotated[
+        int, typer.Option("--days", help="Remove snapshots older than N days.")
+    ] = 7,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="List what would be removed, remove nothing.")
+    ] = False,
 ) -> None:
-    """Remove old phase snapshots."""
-    _pending("gc", "M8")
+    """Remove old phase snapshots.
+
+    Per-run snapshots (`<run_id>-<phase>`) are the ones that accumulate: two per
+    validate, two per run, each a full image layer. BASE snapshots are keyed by
+    cache key and shared across runs, so they are kept unless they are also
+    older than the cutoff -- rebuilding one is the expensive case.
+    """
+    runtime = DockerRuntime()
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+
+    removable: list[tuple[str, str]] = []
+    for image in runtime.list_images("harness/"):
+        created = _parse_docker_time(image.created_at)
+        if created is None or created >= cutoff:
+            continue
+        kind = "base" if ":base-" in image.ref else "phase"
+        removable.append((image.ref, kind))
+
+    if not removable:
+        console.print(Text(f"nothing older than {days} day(s).", style="dim"))
+        return
+
+    for ref, kind in removable:
+        if dry_run:
+            console.print(Text(f"would remove {ref} ({kind})", style="yellow"))
+        else:
+            runtime.remove_image(ref, force=True)
+            console.print(Text(f"removed {ref}", style="dim"))
+
+    verb = "would remove" if dry_run else "removed"
+    console.print(Text(f"{verb} {len(removable)} snapshot(s).", style="bold green"))
+
+
+def _parse_docker_time(value: str) -> datetime | None:
+    """Parse `docker image ls` timestamps, which are not ISO-8601."""
+    if not value:
+        return None
+    # e.g. "2026-08-23 21:56:03 +0530 IST" -- drop the trailing zone name.
+    trimmed = " ".join(value.split()[:3])
+    try:
+        return datetime.strptime(trimmed, "%Y-%m-%d %H:%M:%S %z")
+    except ValueError:
+        return None
 
 
 def _ensure_base(bundle: Path, *, no_cache: bool = False) -> tuple[Bundle, BaseResult]:

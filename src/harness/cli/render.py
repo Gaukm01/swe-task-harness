@@ -390,3 +390,56 @@ def render_instance_survey(rows: list[dict[str, object]], *, total: int) -> None
             str(row["instance_id"]),
         )
     console.print(table)
+
+
+def render_runs(rows: Sequence[sqlite3.Row]) -> None:
+    """Render the recorded runs table."""
+    if not rows:
+        console.print(Text("no runs recorded yet.", style="dim"))
+        console.print(
+            Text("  try: task run examples/tiny-fixture --solver gold", style="dim")
+        )
+        return
+
+    table = Table(title="runs", title_justify="left", header_style="bold")
+    table.add_column("run")
+    table.add_column("task")
+    table.add_column("solver")
+    table.add_column("outcome")
+    table.add_column("flags", justify="right")
+    table.add_column("cost", justify="right")
+    table.add_column("started")
+
+    for row in rows:
+        outcome = row["outcome"]
+        style = _OUTCOME_STYLE.get(Outcome(outcome), "dim") if outcome else "dim"
+        flags = json.loads(row["gaming_flags"] or "[]")
+        cost = row["cost_usd"] or 0.0
+        table.add_row(
+            row["run_id"],
+            row["task_id"],
+            row["solver_kind"] + (f" · {row['solver_model']}" if row["solver_model"] else ""),
+            Text(outcome or "incomplete", style=style),
+            Text(str(len(flags)) if flags else "-", style="yellow" if flags else "dim"),
+            f"${cost:.4f}" if cost else "-",
+            (row["started_at"] or "")[:19].replace("T", " "),
+        )
+    console.print(table)
+
+
+def render_shell_banner(image: str, phase: object, run_id: str) -> None:
+    """Say what is being entered before handing over the terminal."""
+    err_console.print(
+        Text(f"entering {getattr(phase, 'value', phase)} snapshot of run {run_id}", style="bold")
+    )
+    err_console.print(Text(f"  image: {image}", style="dim"))
+    err_console.print(Text("  the container is discarded on exit.", style="dim"))
+
+
+def render_site_written(written: Sequence[Path], destination: Path) -> None:
+    """Say what was generated and how to look at it."""
+    runs = len(written) - 1
+    console.print(
+        Text(f"wrote {runs} run page{'' if runs == 1 else 's'} + index", style="bold green")
+    )
+    console.print(Text(f"  open {destination / 'index.html'}", style="dim"))

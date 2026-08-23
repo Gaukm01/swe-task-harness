@@ -1,0 +1,115 @@
+{% extends "base.html.j2" %}
+{% block title %}{{ run.task_id }} · {{ run.outcome or 'incomplete' }}{% endblock %}
+{% block body %}
+<header>
+  <h1>
+    <span class="badge {{ run.outcome or 'incomplete' }}">{{ run.outcome or 'incomplete' }}</span>
+    {{ run.task_id }}
+  </h1>
+  <div class="muted mono">{{ run.run_id }} · <a href="index.html">all runs</a></div>
+</header>
+
+{% if run.gaming_flags %}
+<div class="panel flags">
+  <strong>Gaming flags</strong>
+  <div class="muted" style="font-size:13px;margin:4px 0 8px">
+    These annotate the outcome. They never change a pass into a fail — but a
+    flagged run that passes is <code>resolved_suspect</code>, never <code>resolved</code>.
+  </div>
+  <ul style="margin:0;padding-left:20px">
+    {% for flag in run.gaming_flags %}<li>{{ flag }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if run.notes %}
+<div class="panel" style="margin-top:12px">
+  {% for note in run.notes %}<div class="muted">{{ note }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<h2>Run</h2>
+<dl class="kv">
+  <dt>solver</dt><dd>{{ run.solver_kind }}{% if run.solver_model %} · {{ run.solver_model }}{% endif %}</dd>
+  {% if run.turns %}<dt>turns</dt><dd class="num">{{ run.turns }}</dd>{% endif %}
+  {% if run.cost_usd %}<dt>cost</dt><dd class="num">${{ '%.4f'|format(run.cost_usd) }}</dd>{% endif %}
+  <dt>bundle digest</dt><dd class="mono">{{ run.bundle_digest }}</dd>
+  <dt>image</dt><dd class="mono">{{ run.image_digest }}</dd>
+  {% if run.instance_url %}<dt>instance</dt><dd><a href="{{ run.instance_url }}">{{ run.instance_id }}</a></dd>{% endif %}
+  <dt>summary</dt>
+  <dd>
+    f2p fixed <span class="num">{{ run.f2p_fixed }}/{{ run.f2p_total }}</span> ·
+    p2p regressed <span class="num">{{ run.p2p_regressed }}/{{ run.p2p_total }}</span>
+  </dd>
+  <dt>timings</dt>
+  <dd class="num">{% for stage, ms in run.timings.items() %}{{ stage }} {{ ms }}ms{{ ' · ' if not loop.last }}{% endfor %}</dd>
+</dl>
+
+<h2>Tests</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th>bucket</th><th>test</th><th>baseline</th><th>post</th><th>transition</th></tr></thead>
+  <tbody>
+  {% for test in run.tests %}
+    <tr>
+      <td class="mono">{{ test.bucket }}</td>
+      <td class="mono">
+        {{ test.id }}
+        {% if test.message %}
+        <details><summary class="muted">failure message</summary>
+          <div class="body"><pre class="block">{{ test.message }}</pre></div>
+        </details>
+        {% endif %}
+      </td>
+      <td class="{{ test.baseline }}">{{ test.baseline }}</td>
+      <td class="{{ test.post }}">{{ test.post }}</td>
+      <td class="{{ test.transition }}"><strong>{{ test.transition }}</strong></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if run.events %}
+<h2>Agent trajectory</h2>
+<div class="muted" style="font-size:13px;margin-bottom:8px">
+  {{ run.events|length }} step{{ '' if run.events|length == 1 else 's' }}. Refused tool calls are shown, not hidden.
+</div>
+{% for event in run.events %}
+<details>
+  <summary>
+    <span class="mono muted">turn {{ event.turn }}</span>
+    <strong>{{ event.label }}</strong>
+    {% if event.refused %}<span class="badge resolved_suspect">refused</span>
+    {% elif event.is_error %}<span class="badge unresolved">error</span>{% endif %}
+    <span class="muted">{{ event.preview }}</span>
+  </summary>
+  <div class="body">
+    {% if event.arguments %}<pre class="block">{{ event.arguments }}</pre>{% endif %}
+    {% if event.result %}<pre class="block" style="margin-top:8px">{{ event.result }}</pre>{% endif %}
+  </div>
+</details>
+{% endfor %}
+{% endif %}
+
+{% if run.restored_test_count %}
+<h2>Force-restored before grading</h2>
+<div class="muted" style="font-size:13px;margin-bottom:8px">
+  <strong>{{ run.restored_test_count }}</strong> test path{{ '' if run.restored_test_count == 1 else 's' }}
+  checked out from the base commit, then the test patch re-applied — so a solver
+  that edited or deleted a test gains nothing.
+  {% if run.restored_test_count > run.restored_test_paths|length %}
+  Showing the first {{ run.restored_test_paths|length }}.
+  {% endif %}
+</div>
+<pre class="block">{% for path in run.restored_test_paths %}{{ path }}
+{% endfor %}</pre>
+{% endif %}
+
+<h2>Solution diff</h2>
+{% if run.diff_lines %}
+<pre class="block diff">{% for line in run.diff_lines %}<span class="{{ line.cls }}">{{ line.text }}</span>{% endfor %}</pre>
+{% else %}
+<div class="panel muted">The solver produced an empty diff.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html.j2" %}
+{% block title %}runs · swe-task-harness{% endblock %}
+{% block body %}
+<header>
+  <h1>swe-task-harness</h1>
+  <div class="muted">{{ runs|length }} run{{ '' if runs|length == 1 else 's' }} recorded</div>
+</header>
+
+{% if not runs %}
+  <div class="panel">
+    <p style="margin:0 0 8px">No runs yet.</p>
+    <pre class="block">uv run task run examples/tiny-fixture --solver gold</pre>
+  </div>
+{% else %}
+<div class="scroll">
+<table>
+  <thead>
+    <tr>
+      <th>run</th><th>task</th><th>solver</th><th>outcome</th>
+      <th>f2p</th><th>p2p</th><th>flags</th><th>cost</th><th>started</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for run in runs %}
+    <tr>
+      <td class="mono"><a href="run-{{ run.run_id }}.html">{{ run.run_id[:12] }}…</a></td>
+      <td>{{ run.task_id }}</td>
+      <td>{{ run.solver_kind }}{% if run.solver_model %} <span class="muted">{{ run.solver_model }}</span>{% endif %}</td>
+      <td><span class="badge {{ run.outcome or 'incomplete' }}">{{ run.outcome or 'incomplete' }}</span></td>
+      <td class="num">{{ run.f2p_fixed }}/{{ run.f2p_total }}</td>
+      <td class="num">{{ run.p2p_regressed }}/{{ run.p2p_total }}</td>
+      <td class="num">{% if run.gaming_flags %}<span class="badge resolved_suspect">{{ run.gaming_flags|length }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="num">{% if run.cost_usd %}${{ '%.4f'|format(run.cost_usd) }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="mono muted">{{ run.started_at }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

@@ -13,6 +13,9 @@ from pydantic import BaseModel, Field
 
 from harness.core.run import RunResult
 
+# How many restored paths to name in the report before summarizing.
+RESTORED_SAMPLE = 20
+
 
 class SolverReport(BaseModel):
     kind: str
@@ -48,7 +51,11 @@ class RunReport(BaseModel):
     # Not in the original sketch, but a report that says `unresolved` without
     # saying "the solver produced an empty diff" wastes the reader's time.
     notes: list[str] = Field(default_factory=list)
-    # Evidence that force-restore ran, and on what.
+    # Evidence that force-restore ran, and on what. A count plus a sample: a
+    # real repo has thousands of test files (ansible restores ~10k), and
+    # enumerating them turned this artifact into 272KB of path list. The point
+    # is that it ran and how widely, not a manifest.
+    restored_test_count: int = 0
     restored_test_paths: list[str] = Field(default_factory=list)
 
 
@@ -85,7 +92,8 @@ def build_report(result: RunResult, *, artifacts: dict[str, str] | None = None) 
         timings_ms=result.timings.as_dict(),
         artifacts=artifacts or {},
         notes=result.notes,
-        restored_test_paths=result.restored_test_paths,
+        restored_test_count=len(result.restored_test_paths),
+        restored_test_paths=result.restored_test_paths[:RESTORED_SAMPLE],
     )
 
 

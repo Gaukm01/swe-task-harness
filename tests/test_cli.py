@@ -54,10 +54,15 @@ def test_unknown_command_is_a_usage_error():
     assert runner.invoke(app, ["nope"]).exit_code == ExitCode.USAGE
 
 
-def test_pending_command_raises_a_typed_error():
-    result = runner.invoke(app, ["ui"])
+def test_every_registered_command_is_implemented():
+    # No `_pending` stubs remain: every command in --help does something.
+    result = runner.invoke(app, ["--help"])
+    assert "not implemented" not in result.stdout
+
+
+def test_a_run_id_passed_to_log_says_where_to_look():
+    result = runner.invoke(app, ["log", "01NOTANINVOCATION"])
     assert isinstance(result.exception, HarnessError)
-    assert "M8" in (result.exception.fix or "")
 
 
 # -- lint -----------------------------------------------------------------
