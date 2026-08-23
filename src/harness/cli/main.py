@@ -694,15 +694,46 @@ def _verify_api_key() -> Check:
             model=DEFAULT_MODEL, messages=[{"role": "user", "content": "ping"}]
         )
     except Exception as error:  # noqa: BLE001 - reported, never raised
-        return Check(
-            name="anthropic api call",
-            status=CheckStatus.WARN,
-            detail=f"{type(error).__name__}: {str(error)[:160]}",
-            fix="The key is present but the API rejected it. Check it is active and "
-            "has credit at console.anthropic.com.",
-        )
+        detail, fix = _explain_api_error(error)
+        return Check(name="anthropic api call", status=CheckStatus.WARN, detail=detail, fix=fix)
     return Check(
         name="anthropic api call",
         status=CheckStatus.OK,
         detail=f"authenticated (count_tokens, {DEFAULT_MODEL}) — no tokens billed",
+    )
+
+
+def _explain_api_error(error: BaseException) -> tuple[str, str]:
+    """Turn an SDK exception into one readable line plus a concrete fix.
+
+    The SDK stringifies errors as the raw JSON body, which renders as a wall of
+    braces in a table cell. The `message` field is the part a human needs.
+    """
+    message = str(error)
+    body = getattr(error, "body", None)
+    if isinstance(body, dict):
+        inner = body.get("error")
+        if isinstance(inner, dict) and inner.get("message"):
+            message = str(inner["message"])
+
+    lowered = message.lower()
+    if "credit balance" in lowered:
+        return (
+            "no credit: the key is valid but the account cannot make API calls",
+            "Add credit at console.anthropic.com → Plans & Billing. Until then use "
+            "`--solver gold`, `noop`, or `replay:<run_id>` — all zero-API-call.",
+        )
+    if "rate" in lowered and "limit" in lowered:
+        return (
+            f"rate limited: {message[:120]}",
+            "Wait and retry, or replay a recorded run with `--solver replay:<run_id>`.",
+        )
+    if isinstance(error, TypeError) or "authentication" in lowered:
+        return (
+            "could not authenticate",
+            "Check ANTHROPIC_API_KEY in .env. `task doctor` shows what it found.",
+        )
+    return (
+        f"{type(error).__name__}: {message[:150]}",
+        "The key is present but the API rejected the request.",
     )
