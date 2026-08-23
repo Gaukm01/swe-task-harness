@@ -30,6 +30,7 @@ from harness.cli.render import (
     render_check_report,
     render_error,
     render_invocation,
+    render_instance_survey,
     render_run_result,
     render_show_tests,
     render_unexpected,
@@ -535,13 +536,55 @@ def show_tests(bundle: BundleArg) -> None:
 
 @app.command("import")
 def import_instance(
-    instance_id: Annotated[str, typer.Option("--instance-id", help="SWE-Bench Pro instance id.")],
+    instance_id: Annotated[
+        str | None, typer.Option("--instance-id", help="SWE-Bench Pro instance id.")
+    ] = None,
     out: Annotated[
         Path | None, typer.Option("--out", help="Directory to write the bundle to.")
     ] = None,
+    repo_path: Annotated[
+        str,
+        typer.Option("--repo-path", help="Where the prebuilt image keeps the repo."),
+    ] = "/app",
+    survey_n: Annotated[
+        int | None,
+        typer.Option("--survey", help="Instead of importing, list N instances by size."),
+    ] = None,
+    language: Annotated[
+        str | None, typer.Option("--language", help="Filter a survey by language.")
+    ] = None,
 ) -> None:
     """Convert a SWE-Bench Pro instance into a task bundle."""
-    _pending("import", "M7")
+    from harness.importers.swebench_pro import find_instance, survey, write_bundle
+
+    if survey_n is not None:
+        rows = survey(survey_n)
+        if language:
+            rows = [r for r in rows if r["language"] == language]
+        # Cheapest first: a small patch and few tests means a fast, readable run.
+        rows.sort(key=lambda r: (r["f2p"] + r["p2p"], r["patch_bytes"]))
+        render_instance_survey(rows[:25], total=len(rows))
+        return
+
+    if not instance_id:
+        raise UsageError(
+            "--instance-id is required.",
+            fix="Find one with `task import --survey 200 --language python`.",
+        )
+
+    row = find_instance(instance_id)
+    destination = out or Path("examples/swebench-pro")
+    imported = write_bundle(row, destination, repo_path_in_image=repo_path)
+
+    report = lint_bundle(imported.path)
+    render_check_report(
+        report,
+        title=f"task import {imported.task_id}",
+        clean_message="bundle imported and valid",
+        footnote=f"{imported.instance_id}\n{imported.path}",
+    )
+    if not report.is_clean:
+        raise typer.Exit(int(report.exit_code()))
 
 
 @app.command()
