@@ -239,3 +239,38 @@ def test_an_unknown_framework_is_a_bundle_error():
         get_adapter("nosuchframework")
     # The fix must name what *is* supported, not just what is not.
     assert "pytest" in (caught.value.fix or "")
+
+
+# -- collection failures must not be mistaken for missing selectors --------
+
+COLLECTION_FAILURE = """<testsuites><testsuite tests="1" errors="1">
+<testcase classname="" file="test/units/test_new.py"
+          name="test.units.test_new" time="0.0">
+  <error message="collection failure">ImportError: cannot import name 'sanitize_keys'</error>
+</testcase>
+</testsuite></testsuites>"""
+
+
+def test_selectors_in_an_unimportable_file_are_collection_errors(tmp_path):
+    # The normal baseline state for a fail-to-pass test that adds new API: the
+    # test file imports the symbol the fix is supposed to introduce. Reporting
+    # `not_found` would call a correct baseline a broken bundle.
+    outcomes = adapter.parse(
+        junit_path=_write(tmp_path, COLLECTION_FAILURE),
+        exec_result=_exec(exit_code=4, stderr="ERROR: not found: ..."),
+        requested={
+            "test/units/test_new.py::test_a": Bucket.F2P,
+            "test/units/test_new.py::test_b": Bucket.F2P,
+        },
+    )
+    assert [o.status for o in outcomes] == [TestStatus.COLLECTION_ERROR] * 2
+    assert "failed to import" in outcomes[0].message
+
+
+def test_a_selector_in_a_healthy_file_is_still_not_found(tmp_path):
+    outcomes = adapter.parse(
+        junit_path=_write(tmp_path, COLLECTION_FAILURE),
+        exec_result=_exec(exit_code=4),
+        requested={"test/units/other.py::test_c": Bucket.P2P},
+    )
+    assert outcomes[0].status is TestStatus.NOT_FOUND

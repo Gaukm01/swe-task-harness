@@ -47,6 +47,14 @@ def requested_map(spec: TaskSpec) -> dict[str, Bucket]:
     return requested
 
 
+def group_by_file(requested: dict[str, Bucket]) -> dict[str, dict[str, Bucket]]:
+    """Group selectors by the file they live in, preserving request order."""
+    groups: dict[str, dict[str, Bucket]] = {}
+    for selector, bucket in requested.items():
+        groups.setdefault(selector.split("::", 1)[0], {})[selector] = bucket
+    return groups
+
+
 def run_selectors(
     runtime: ContainerRuntime,
     container_id: str,
@@ -59,35 +67,86 @@ def run_selectors(
 ) -> TestRun:
     """Run the guardrail selectors and classify every one of them.
 
+    Selectors run **grouped by file, one invocation per file**. That is a
+    correctness requirement, not an optimisation. pytest resolves every selector
+    before running anything and aborts the whole invocation if any one of them
+    cannot be resolved -- so a test file that does not import blocks every other
+    selector, including pass-to-pass tests in unrelated files.
+
+    And a test file that does not import is the *normal* baseline state for a
+    fail-to-pass test that adds new API: it imports the symbol the fix is
+    supposed to introduce. Without grouping, almost every real SWE-bench
+    instance would report its entire suite as `not_found` at GUARDED.
+
     A non-zero exit is expected and normal -- at GUARDED the f2p tests are
     supposed to fail. Only a timeout or a missing junit file is treated as the
     infrastructure failing, which is the distinction invariant 5 turns on.
     """
     adapter = get_adapter(spec.tests.framework)
     requested = selectors if selectors is not None else requested_map(spec)
-
-    container_junit = f"{CONTAINER_ARTIFACT_DIR}/{label}-junit.xml"
-    argv = adapter.run_argv(spec.tests.run_cmd_template, list(requested), container_junit)
-
-    runtime.exec(container_id, ["mkdir", "-p", CONTAINER_ARTIFACT_DIR])
-    exec_result = runtime.exec(container_id, argv, workdir=workdir, timeout_s=spec.tests.timeout_s)
+    groups = group_by_file(requested)
 
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    host_junit = artifact_dir / f"{label}-junit.xml"
-    copied = runtime.copy_out(container_id, container_junit, host_junit)
+    runtime.exec(container_id, ["mkdir", "-p", CONTAINER_ARTIFACT_DIR])
 
-    (artifact_dir / f"{label}-stdout.txt").write_text(exec_result.stdout)
-    (artifact_dir / f"{label}-stderr.txt").write_text(exec_result.stderr)
+    outcomes: list[TestOutcome] = []
+    stdout_parts: list[str] = []
+    stderr_parts: list[str] = []
+    results: list[ExecResult] = []
+    first_junit: Path | None = None
+    last_argv: list[str] = []
 
-    outcomes = adapter.parse(
-        junit_path=host_junit if copied else None,
-        exec_result=exec_result,
-        requested=requested,
+    for index, group in enumerate(groups.values()):
+        suffix = label if len(groups) == 1 else f"{label}-{index}"
+        container_junit = f"{CONTAINER_ARTIFACT_DIR}/{suffix}-junit.xml"
+        argv = adapter.run_argv(spec.tests.run_cmd_template, list(group), container_junit)
+        last_argv = argv
+
+        exec_result = runtime.exec(
+            container_id, argv, workdir=workdir, timeout_s=spec.tests.timeout_s
+        )
+        results.append(exec_result)
+
+        host_junit = artifact_dir / f"{suffix}-junit.xml"
+        copied = runtime.copy_out(container_id, container_junit, host_junit)
+        if copied and first_junit is None:
+            first_junit = host_junit
+
+        stdout_parts.append(f"$ {' '.join(argv)}\n{exec_result.stdout}")
+        if exec_result.stderr.strip():
+            stderr_parts.append(exec_result.stderr)
+
+        outcomes.extend(
+            adapter.parse(
+                junit_path=host_junit if copied else None,
+                exec_result=exec_result,
+                requested=group,
+            )
+        )
+
+    combined_stdout = "\n".join(stdout_parts)
+    combined_stderr = "\n".join(stderr_parts)
+    (artifact_dir / f"{label}-stdout.txt").write_text(combined_stdout)
+    (artifact_dir / f"{label}-stderr.txt").write_text(combined_stderr)
+
+    # Report the outcomes in the order they were requested, so f2p reads first
+    # regardless of how the selectors happened to group.
+    by_id = {o.test_id: o for o in outcomes}
+    ordered = [by_id[s] for s in requested if s in by_id]
+
+    merged = ExecResult(
+        argv=last_argv,
+        # The worst exit code across groups; a timeout anywhere is a timeout.
+        exit_code=max((r.exit_code for r in results), default=0),
+        stdout=combined_stdout,
+        stderr=combined_stderr,
+        duration_ms=sum(r.duration_ms for r in results),
+        timed_out=any(r.timed_out for r in results),
     )
     return TestRun(
         label=label,
-        outcomes=outcomes,
-        exec_result=exec_result,
-        junit_path=host_junit if copied else None,
-        argv=argv,
+        outcomes=ordered,
+        exec_result=merged,
+        junit_path=first_junit,
+        argv=last_argv,
     )

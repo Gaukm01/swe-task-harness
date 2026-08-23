@@ -1,0 +1,1 @@
+$ python -m pytest tests/test_intervals.py::test_merges_touching_intervals tests/test_intervals.py::test_sorts_unordered_input tests/test_intervals.py::test_empty_input tests/test_intervals.py::test_single_interval tests/test_intervals.py::test_merges_overlapping tests/test_intervals.py::test_keeps_disjoint_intervals --junitxml=/tmp/harness/post-junit.xml

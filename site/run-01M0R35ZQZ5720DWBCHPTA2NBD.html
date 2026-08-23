@@ -79,7 +79,7 @@
     <span class="badge unresolved">unresolved</span>
     tiny-fixture
   </h1>
-  <div class="muted mono">01M0QQGDBMX770F840P62PVV6D · <a href="index.html">all runs</a></div>
+  <div class="muted mono">01M0R35ZQZ5720DWBCHPTA2NBD · <a href="index.html">all runs</a></div>
 </header>
 
 
@@ -89,15 +89,15 @@
 <h2>Run</h2>
 <dl class="kv">
   <dt>solver</dt><dd>noop</dd>
-  <dt>bundle digest</dt><dd class="mono">b1dcd7301d88aaba2e42a1e20d36e314d0c5cbe6fce33c242942c03443af2333</dd>
-  <dt>image</dt><dd class="mono">harness/tiny-fixture:base-2129459135a6</dd>
+  <dt>bundle digest</dt><dd class="mono">8cbe83b674917ec8bdaac9e3fc8f297471a9ccfd4e9b3216888a4de19d8a94d2</dd>
+  <dt>image</dt><dd class="mono">harness/tiny-fixture:base-0225b1c630bf</dd>
 <dt>instance</dt><dd><a href="https://huggingface.co/datasets/ScaleAI/SWE-bench_Pro/viewer/default/test?q=tiny-fixture">tiny-fixture</a></dd>  <dt>summary</dt>
   <dd>
     f2p fixed <span class="num">0/2</span> ·
     p2p regressed <span class="num">0/4</span>
   </dd>
   <dt>timings</dt>
-  <dd class="num">setup 0ms · validate 1773ms · solve 574ms · grade 1087ms</dd>
+  <dd class="num">setup 0ms · validate 1749ms · solve 534ms · grade 1075ms</dd>
 </dl>
 
 <h2>Tests</h2>
@@ -197,6 +197,14 @@ tests/test_intervals.py:26: AssertionError</pre></div>
 </div>
 
 
+<h2>Force-restored before grading</h2>
+<div class="muted" style="font-size:13px;margin-bottom:8px">
+  <strong>1</strong> test path
+  checked out from the base commit, then the test patch re-applied — so a solver
+  that edited or deleted a test gains nothing.
+</div>
+<pre class="block">tests/test_intervals.py
+</pre>
 
 <h2>Solution diff</h2>
 <div class="panel muted">The solver produced an empty diff.</div>

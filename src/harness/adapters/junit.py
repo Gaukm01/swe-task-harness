@@ -35,6 +35,10 @@ class JunitCase:
 
     classname: str
     name: str
+    # pytest records the source file on every testcase, including the synthetic
+    # one it emits for a collection failure. That attribute is the only reliable
+    # link from "this module did not import" back to the selectors inside it.
+    file: str
     duration_ms: int
     # One of: passed, failed, error, skipped
     result: str
@@ -82,6 +86,7 @@ def parse_junit(xml_text: str) -> list[JunitCase]:
     for testcase in root.iter("testcase"):
         classname = testcase.get("classname", "")
         name = testcase.get("name", "")
+        source_file = testcase.get("file", "")
         try:
             duration_ms = int(float(testcase.get("time", "0")) * 1000)
         except ValueError:
@@ -110,6 +115,7 @@ def parse_junit(xml_text: str) -> list[JunitCase]:
             JunitCase(
                 classname=classname,
                 name=name,
+                file=source_file,
                 duration_ms=duration_ms,
                 result=result,
                 message=(message or None) and message[:MAX_MESSAGE_CHARS],

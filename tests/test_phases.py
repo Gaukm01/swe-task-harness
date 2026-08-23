@@ -521,3 +521,36 @@ def test_keep_snapshots_overrides_the_discard(bundle, tiny_fixture, tmp_path, ke
     assert result.ok
     assert result.guarded.retained
     assert runtime.removed_images == []
+
+
+def test_selectors_are_grouped_by_file(bundle, tiny_fixture, tmp_path, key):
+    """One unimportable file must not block selectors in another.
+
+    pytest resolves every selector before running anything and aborts the whole
+    invocation if one cannot be resolved. Without per-file grouping, a test file
+    that imports a not-yet-existing symbol — the normal baseline for a
+    fail-to-pass test that adds new API — makes the entire suite report
+    `not_found`.
+    """
+    from harness.core.results import Bucket
+    from harness.core.testrun import group_by_file, run_selectors
+
+    grouped = group_by_file(
+        {"a.py::x": Bucket.F2P, "b.py::y": Bucket.P2P, "a.py::z": Bucket.P2P}
+    )
+    assert list(grouped) == ["a.py", "b.py"]
+    assert list(grouped["a.py"]) == ["a.py::x", "a.py::z"]
+
+    runtime = FakeRuntime()
+    spec = bundle.spec.model_copy(deep=True)
+    spec.tests.fail_to_pass = ["one.py::a"]
+    spec.tests.pass_to_pass = ["two.py::b"]
+    runtime.copy_out_payloads["/tmp/harness/x-0-junit.xml"] = junit_for([], ["one.py::a"])
+    runtime.copy_out_payloads["/tmp/harness/x-1-junit.xml"] = junit_for(["two.py::b"], [])
+
+    run = run_selectors(
+        runtime, "c1", spec, label="x", workdir="/w", artifact_dir=tmp_path / "a"
+    )
+    # Two files, two invocations.
+    assert sum(1 for a in runtime.exec_argvs() if "pytest" in a) == 2
+    assert {o.test_id for o in run.outcomes} == {"one.py::a", "two.py::b"}

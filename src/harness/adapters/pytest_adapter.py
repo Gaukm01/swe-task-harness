@@ -100,12 +100,20 @@ class PytestAdapter:
         missing_status, missing_note = self._status_for_missing(junit_path, exec_result)
 
         cases: dict[tuple[str, str], JunitCase] = {}
+        # Files pytest could not import at all. Every selector inside one is a
+        # collection error, not a missing selector -- and telling those apart
+        # matters: a module that fails to import because the fix does not exist
+        # yet is a *correct* baseline, while a genuinely absent selector is a
+        # broken bundle.
+        uncollectable: set[str] = set()
         if missing_status is None:
             assert junit_path is not None
             try:
                 for parsed in read_junit(junit_path):
                     # Later entries win: a rerun of the same id reports its last state.
                     cases[parsed.key] = parsed
+                    if parsed.is_collection_error and parsed.file:
+                        uncollectable.add(parsed.file)
             except JunitParseError as error:
                 missing_status = TestStatus.INFRA_ERROR
                 missing_note = str(error)
@@ -114,6 +122,17 @@ class PytestAdapter:
         for selector, bucket in requested.items():
             case = cases.get(selector_to_junit_key(selector))
             if case is None:
+                selector_file = selector.split("::", 1)[0]
+                if missing_status is None and selector_file in uncollectable:
+                    outcomes.append(
+                        TestOutcome(
+                            test_id=selector,
+                            bucket=bucket,
+                            status=TestStatus.COLLECTION_ERROR,
+                            message=f"{selector_file} failed to import",
+                        )
+                    )
+                    continue
                 outcomes.append(
                     TestOutcome(
                         test_id=selector,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>tiny-fixture · unresolved</title>
+<title>tiny-fixture · resolved</title>
 <style>
   /* Self-contained by design: a reviewer double-clicks a file and it works.
      No CDN, no build step, no server. */
@@ -76,28 +76,26 @@
 <div class="wrap">
 <header>
   <h1>
-    <span class="badge unresolved">unresolved</span>
+    <span class="badge resolved">resolved</span>
     tiny-fixture
   </h1>
-  <div class="muted mono">01M0QQGDBMX770F840P62PVV6D · <a href="index.html">all runs</a></div>
+  <div class="muted mono">01M0R35VSNRPW77Q1AWR471GXC · <a href="index.html">all runs</a></div>
 </header>
 
 
-<div class="panel" style="margin-top:12px">
-<div class="muted">the solver produced an empty diff</div></div>
 
 <h2>Run</h2>
 <dl class="kv">
-  <dt>solver</dt><dd>noop</dd>
-  <dt>bundle digest</dt><dd class="mono">b1dcd7301d88aaba2e42a1e20d36e314d0c5cbe6fce33c242942c03443af2333</dd>
-  <dt>image</dt><dd class="mono">harness/tiny-fixture:base-2129459135a6</dd>
+  <dt>solver</dt><dd>gold</dd>
+  <dt>bundle digest</dt><dd class="mono">8cbe83b674917ec8bdaac9e3fc8f297471a9ccfd4e9b3216888a4de19d8a94d2</dd>
+  <dt>image</dt><dd class="mono">harness/tiny-fixture:base-0225b1c630bf</dd>
 <dt>instance</dt><dd><a href="https://huggingface.co/datasets/ScaleAI/SWE-bench_Pro/viewer/default/test?q=tiny-fixture">tiny-fixture</a></dd>  <dt>summary</dt>
   <dd>
-    f2p fixed <span class="num">0/2</span> ·
+    f2p fixed <span class="num">2/2</span> ·
     p2p regressed <span class="num">0/4</span>
   </dd>
   <dt>timings</dt>
-  <dd class="num">setup 0ms · validate 1773ms · solve 574ms · grade 1087ms</dd>
+  <dd class="num">setup 0ms · validate 1850ms · solve 657ms · grade 1152ms</dd>
 </dl>
 
 <h2>Tests</h2>
@@ -155,8 +153,8 @@ tests/test_intervals.py:22: AssertionError</pre></div>
         </details>
       </td>
       <td class="failed">failed</td>
-      <td class="failed">failed</td>
-      <td class="still_failing"><strong>still_failing</strong></td>
+      <td class="passed">passed</td>
+      <td class="fixed"><strong>fixed</strong></td>
     </tr>
     <tr>
       <td class="mono">p2p</td>
@@ -189,17 +187,25 @@ tests/test_intervals.py:26: AssertionError</pre></div>
         </details>
       </td>
       <td class="failed">failed</td>
-      <td class="failed">failed</td>
-      <td class="still_failing"><strong>still_failing</strong></td>
+      <td class="passed">passed</td>
+      <td class="fixed"><strong>fixed</strong></td>
     </tr>
   </tbody>
 </table>
 </div>
 
 
+<h2>Force-restored before grading</h2>
+<div class="muted" style="font-size:13px;margin-bottom:8px">
+  <strong>1</strong> test path
+  checked out from the base commit, then the test patch re-applied — so a solver
+  that edited or deleted a test gains nothing.
+</div>
+<pre class="block">tests/test_intervals.py
+</pre>
 
 <h2>Solution diff</h2>
-<div class="panel muted">The solver produced an empty diff.</div>
+<pre class="block diff"><span class="h">diff --git a/tinylib/intervals.py b/tinylib/intervals.py</span><span class="">index 075f50e..d3eb513 100644</span><span class="h">--- a/tinylib/intervals.py</span><span class="h">+++ b/tinylib/intervals.py</span><span class="h">@@ -9,18 +9,24 @@ def merge(intervals: list[Interval]) -&gt; list[Interval]:</span><span class="">     &#34;&#34;&#34;Merge overlapping intervals into the smallest equivalent set.</span><span class=""> </span><span class="">     Each interval is a ``(start, end)`` pair with ``start &lt;= end``. Intervals</span><span class="d">-    that overlap are combined into a single span.</span><span class="a">+    that overlap *or touch* are combined into a single span, and the result is</span><span class="a">+    returned in ascending order regardless of the order of the input.</span><span class=""> </span><span class="">     &gt;&gt;&gt; merge([(1, 3), (2, 6)])</span><span class="">     [(1, 6)]</span><span class="a">+    &gt;&gt;&gt; merge([(1, 2), (2, 3)])</span><span class="a">+    [(1, 3)]</span><span class="a">+    &gt;&gt;&gt; merge([(5, 6), (1, 3)])</span><span class="a">+    [(1, 3), (5, 6)]</span><span class="">     &#34;&#34;&#34;</span><span class="">     if not intervals:</span><span class="">         return []</span><span class=""> </span><span class="d">-    merged: list[list[int]] = [list(intervals[0])]</span><span class="d">-    for start, end in intervals[1:]:</span><span class="a">+    ordered = sorted((int(start), int(end)) for start, end in intervals)</span><span class="a">+    merged: list[list[int]] = [list(ordered[0])]</span><span class="a">+    for start, end in ordered[1:]:</span><span class="">         last = merged[-1]</span><span class="d">-        if start &lt; last[1]:</span><span class="a">+        if start &lt;= last[1]:</span><span class="">             last[1] = max(last[1], end)</span><span class="">         else:</span><span class="">             merged.append([start, end])</span></pre>
 <footer>
   Generated by swe-task-harness 0.1.0 · 2026-08-23T19:57:26+00:00 · read-only, no server.
 </footer>
