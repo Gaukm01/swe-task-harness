@@ -190,6 +190,19 @@ class AnthropicTransport:
             ) from error
 
         self._anthropic = anthropic
+
+        # The SDK defers auth resolution to request time and then raises a bare
+        # TypeError. Checking here turns that into a typed error with a fix,
+        # before a container has been built.
+        from harness.core.env import api_key as configured_key
+
+        if not (api_key or configured_key()):
+            raise SolverFailedError(
+                "no Anthropic credentials are configured.",
+                fix="Put ANTHROPIC_API_KEY in .env (see .env.example), or export it. "
+                "`task doctor` shows what it found.",
+            )
+
         try:
             self.client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
         except Exception as error:  # noqa: BLE001 - surfaced as a typed harness error
@@ -217,6 +230,11 @@ class AnthropicTransport:
             raise SolverFailedError(
                 f"the Anthropic API returned {error.status_code}: {error.message}",
                 fix="Re-run; if it persists, check the model id and request shape.",
+            ) from error
+        except TypeError as error:
+            raise SolverFailedError(
+                f"the Anthropic client could not authenticate: {error}",
+                fix="Set ANTHROPIC_API_KEY in .env, then run `task doctor --check-api`.",
             ) from error
         except anthropic.APIConnectionError as error:
             raise SolverFailedError(

@@ -17,6 +17,19 @@ uv sync
 uv run task doctor
 ```
 
+## Credentials (only for `--solver agent`)
+
+```bash
+cp .env.example .env          # then paste your key into it
+uv run task doctor --check-api
+```
+
+`.env` is gitignored. An exported `ANTHROPIC_API_KEY` always wins over the
+file. The key is read from the environment and never written to a report,
+cassette, database row, or log line — `task doctor` shows only a masked
+fingerprint. `gold`, `noop`, `replay`, and `cmd` make zero API calls and need
+no key at all.
+
 ## What works today
 
 ```bash

@@ -43,6 +43,8 @@ from harness.core.bundle import (
     load_bundle,
 )
 from harness.core.cache import compute_cache_key
+from harness.core.checks import Check
+from harness.core.env import MODEL_VAR, load_dotenv
 from harness.core.errors import (
     BaselineValidationError,
     ExitCode,
@@ -54,7 +56,12 @@ from harness.core.phases import BaseResult, Phase, prepare_base, validate_task
 from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.run import execute_run
 from harness.report import build_report, write_report
-from harness.solvers import DEFAULT_MAX_TURNS, resolve_solver
+from harness.solvers import (
+    DEFAULT_MAX_TURNS,
+    DEFAULT_MODEL,
+    precheck_solver,
+    resolve_solver,
+)
 from harness.runtime.docker import DockerRuntime
 from harness.runtime.probe import collect_doctor_report
 from harness.store.db import DEFAULT_DB_FILENAME, Store, utc_now
@@ -67,6 +74,8 @@ class CliState:
     """Process-wide state established by `main()` before Typer runs."""
 
     debug: bool = False
+    # Names loaded out of a local .env, so doctor can say where the key came from.
+    dotenv_loaded: list[str] = field(default_factory=list)
     db_path: Path = field(default_factory=lambda: Path(DEFAULT_DB_FILENAME))
     store: Store | None = None
     invocation_id: str | None = None
@@ -124,9 +133,19 @@ def root(
 
 
 @app.command()
-def doctor() -> None:
+def doctor(
+    check_api: Annotated[
+        bool,
+        typer.Option(
+            "--check-api",
+            help="Also verify the Anthropic key actually works (costs nothing).",
+        ),
+    ] = False,
+) -> None:
     """Check docker, disk, architecture, and credentials before anything else runs."""
-    report = collect_doctor_report()
+    report = collect_doctor_report(dotenv_loaded=bool(state.dotenv_loaded))
+    if check_api:
+        report.add(_verify_api_key())
     render_check_report(report, title="task doctor", clean_message="ready")
     raise typer.Exit(int(report.exit_code()))
 
@@ -289,6 +308,10 @@ def run(
     ] = False,
 ) -> None:
     """Validate the baseline, run a solver, grade the result, and write a report."""
+    # Before any container work: a typo or a missing key should not cost a
+    # BASE build and a full baseline validation first.
+    precheck_solver(solver)
+
     loaded, base = _ensure_base(bundle, no_cache=no_cache)
     store = state.require_store()
 
@@ -332,7 +355,7 @@ def run(
 
     solver_impl = resolve_solver(
         solver,
-        model=model,
+        model=model or os.environ.get(MODEL_VAR) or None,
         max_turns=max_turns,
         max_cost_usd=max_cost_usd,
         cassette_dir=artifact_dir / "llm",
@@ -600,6 +623,9 @@ def _normalize_exit(code: object) -> int:
 def main() -> None:
     """Entry point. Owns invocation logging and the error boundary."""
     argv = sys.argv[1:]
+    # Before anything else, so every command sees the same environment.
+    # An already-exported variable always wins over the file.
+    state.dotenv_loaded = load_dotenv()
     state.db_path = _peek_db_path(argv)
 
     store: Store | None = None
@@ -640,3 +666,43 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def _verify_api_key() -> Check:
+    """Confirm the key actually authenticates, without spending anything.
+
+    `count_tokens` is a real authenticated call that bills nothing, so this
+    turns "the key is present" into "the key works" before a rate-limited live
+    run is spent discovering otherwise.
+    """
+    from harness.core.checks import CheckStatus
+    from harness.core.env import api_key
+
+    key = api_key()
+    if not key:
+        return Check(
+            name="anthropic api call",
+            status=CheckStatus.WARN,
+            detail="skipped: no key configured",
+            fix="Set ANTHROPIC_API_KEY in .env first.",
+        )
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic()
+        client.messages.count_tokens(
+            model=DEFAULT_MODEL, messages=[{"role": "user", "content": "ping"}]
+        )
+    except Exception as error:  # noqa: BLE001 - reported, never raised
+        return Check(
+            name="anthropic api call",
+            status=CheckStatus.WARN,
+            detail=f"{type(error).__name__}: {str(error)[:160]}",
+            fix="The key is present but the API rejected it. Check it is active and "
+            "has credit at console.anthropic.com.",
+        )
+    return Check(
+        name="anthropic api call",
+        status=CheckStatus.OK,
+        detail=f"authenticated (count_tokens, {DEFAULT_MODEL}) — no tokens billed",
+    )

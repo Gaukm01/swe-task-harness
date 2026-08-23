@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from harness.core.checks import Check, CheckReport, CheckStatus
+from harness.core.env import api_key, key_problem, mask
 from harness.core.errors import ExitCode
 
 # Probes are cheap; a hang means the daemon is wedged, which is itself the answer.
@@ -243,25 +244,39 @@ def _check_disk(info: DaemonInfo | None) -> Check:
     return Check(name="disk", status=CheckStatus.OK, detail=detail)
 
 
-def _check_api_key() -> Check:
-    if os.environ.get("ANTHROPIC_API_KEY"):
+def _check_api_key(dotenv_loaded: bool) -> Check:
+    key = api_key()
+    if not key:
         return Check(
             name="anthropic api key",
-            status=CheckStatus.OK,
-            detail="ANTHROPIC_API_KEY set",
+            status=CheckStatus.WARN,
+            detail="not set",
+            fix=(
+                "Copy .env.example to .env and paste your key, or export "
+                "ANTHROPIC_API_KEY. Only `--solver agent` needs it -- gold, noop, "
+                "replay, and cmd make zero API calls."
+            ),
+        )
+
+    source = ".env" if dotenv_loaded else "environment"
+    problem = key_problem(key)
+    if problem:
+        # Catch a paste error now, not partway through a rate-limited live run.
+        return Check(
+            name="anthropic api key",
+            status=CheckStatus.WARN,
+            detail=f"set from {source}, but it {problem}",
+            fix="Re-copy the key from console.anthropic.com with no quotes, no "
+            "`export ` prefix, and no trailing whitespace.",
         )
     return Check(
         name="anthropic api key",
-        status=CheckStatus.WARN,
-        detail="ANTHROPIC_API_KEY not set",
-        fix=(
-            "Only `--solver agent` needs it. `gold`, `noop`, `replay`, and `cmd` "
-            "make zero API calls and work without a key."
-        ),
+        status=CheckStatus.OK,
+        detail=f"{mask(key)} (from {source})",
     )
 
 
-def collect_doctor_report() -> CheckReport:
+def collect_doctor_report(*, dotenv_loaded: bool = False) -> CheckReport:
     """Run every preflight probe.
 
     Checks are appended in dependency order so the first failure is the root
@@ -281,5 +296,5 @@ def collect_doctor_report() -> CheckReport:
 
     checks.append(_check_architecture(info))
     checks.append(_check_disk(info))
-    checks.append(_check_api_key())
+    checks.append(_check_api_key(dotenv_loaded))
     return CheckReport(checks=checks)

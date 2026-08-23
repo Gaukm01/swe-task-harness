@@ -26,6 +26,7 @@ __all__ = [
     "Solver",
     "SolverContext",
     "SolverResult",
+    "precheck_solver",
     "resolve_solver",
 ]
 
@@ -97,6 +98,50 @@ def resolve_solver(
         f"unknown solver {spec!r}.",
         fix="Available: gold, noop, agent, replay:<run_id>, cmd:<command>.",
     )
+
+
+def precheck_solver(spec: str) -> None:
+    """Validate a `--solver` string before any container work happens.
+
+    Building a BASE image and validating a baseline takes tens of seconds. A
+    typo in `--solver`, or a missing API key, should cost none of that.
+    """
+    kind, _, argument = spec.partition(":")
+    kind = kind.strip()
+
+    if kind not in {"gold", "noop", "cmd", "agent", "replay"}:
+        raise UsageError(
+            f"unknown solver {spec!r}.",
+            fix="Available: gold, noop, agent, replay:<run_id>, cmd:<command>.",
+        )
+    if kind == "cmd" and not argument.strip():
+        raise UsageError(
+            "--solver cmd: needs a command.",
+            fix='Try --solver "cmd:python -c \'...\'".',
+        )
+    if kind == "replay":
+        if not argument.strip():
+            raise UsageError(
+                "--solver replay: needs a run id.",
+                fix="Try --solver replay:<run_id>. List runs with `task runs`.",
+            )
+        directory = Path("runs") / argument.strip() / "llm"
+        if not directory.is_dir():
+            raise UsageError(
+                f"no recorded cassettes at {directory}.",
+                fix="Replay needs a run recorded with `--solver agent`. "
+                "List runs with `task runs`.",
+            )
+    if kind == "agent":
+        from harness.core.env import api_key
+
+        if not api_key():
+            raise UsageError(
+                "--solver agent needs an Anthropic API key, and none is configured.",
+                fix="Paste your key into .env (copy .env.example), or export "
+                "ANTHROPIC_API_KEY. Verify with `task doctor --check-api`. "
+                "The gold, noop, and replay solvers need no key.",
+            )
 
 
 def _model_from_cassettes(directory: Path) -> str:
