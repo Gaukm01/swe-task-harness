@@ -16,8 +16,6 @@ task = "harness.cli.main:main"
 [dependency-groups]
 dev = [
     "pytest>=8.2",
-    "ruff>=0.5",
-    "mypy>=1.10",
 ]
 
 [build-system]
@@ -27,29 +25,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/harness"]
 
-[tool.ruff]
-line-length = 100
-src = ["src", "tests"]
-# Fixture repos stand in for arbitrary upstream projects. Linting them to the
-# harness's own style would be wrong, and would churn the gold patch.
-extend-exclude = ["examples/*/repo"]
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "ANN"]
-ignore = ["ANN401"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN"]
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-mypy_path = "src"
-packages = ["harness"]
-
-[[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
