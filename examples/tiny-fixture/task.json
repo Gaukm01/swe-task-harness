@@ -1,0 +1,34 @@
+{
+  "task_id": "tiny-fixture",
+  "repo": null,
+  "base_commit": null,
+  "language": "python",
+  "environment": {
+    "dockerfile": "Dockerfile",
+    "repo_path_in_image": "/app"
+  },
+  "tests": {
+    "framework": "pytest",
+    "run_cmd_template": "python -m pytest {selectors} --junitxml={out}",
+    "fail_to_pass": [
+      "tests/test_intervals.py::test_merges_touching_intervals",
+      "tests/test_intervals.py::test_sorts_unordered_input"
+    ],
+    "pass_to_pass": [
+      "tests/test_intervals.py::test_empty_input",
+      "tests/test_intervals.py::test_single_interval",
+      "tests/test_intervals.py::test_merges_overlapping",
+      "tests/test_intervals.py::test_keeps_disjoint_intervals"
+    ],
+    "test_path_globs": [
+      "tests/**",
+      "**/test_*.py",
+      "**/*_test.py"
+    ],
+    "timeout_s": 60
+  },
+  "source": {
+    "dataset": "synthetic",
+    "instance_id": "tiny-fixture"
+  }
+}

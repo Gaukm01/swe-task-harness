@@ -16,7 +16,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from harness.core.doctor import Check, CheckStatus, DoctorReport
+from harness.core.checks import Check, CheckReport, CheckStatus
 from harness.core.errors import ExitCode
 
 # Probes are cheap; a hang means the daemon is wedged, which is itself the answer.
@@ -261,7 +261,7 @@ def _check_api_key() -> Check:
     )
 
 
-def collect_doctor_report() -> DoctorReport:
+def collect_doctor_report() -> CheckReport:
     """Run every preflight probe.
 
     Checks are appended in dependency order so the first failure is the root
@@ -282,4 +282,4 @@ def collect_doctor_report() -> DoctorReport:
     checks.append(_check_architecture(info))
     checks.append(_check_disk(info))
     checks.append(_check_api_key())
-    return DoctorReport(checks=checks)
+    return CheckReport(checks=checks)

@@ -1,0 +1,33 @@
+diff --git a/tinylib/intervals.py b/tinylib/intervals.py
+index 075f50e..d3eb513 100644
+--- a/tinylib/intervals.py
++++ b/tinylib/intervals.py
+@@ -9,18 +9,24 @@ def merge(intervals: list[Interval]) -> list[Interval]:
+     """Merge overlapping intervals into the smallest equivalent set.
+ 
+     Each interval is a ``(start, end)`` pair with ``start <= end``. Intervals
+-    that overlap are combined into a single span.
++    that overlap *or touch* are combined into a single span, and the result is
++    returned in ascending order regardless of the order of the input.
+ 
+     >>> merge([(1, 3), (2, 6)])
+     [(1, 6)]
++    >>> merge([(1, 2), (2, 3)])
++    [(1, 3)]
++    >>> merge([(5, 6), (1, 3)])
++    [(1, 3), (5, 6)]
+     """
+     if not intervals:
+         return []
+ 
+-    merged: list[list[int]] = [list(intervals[0])]
+-    for start, end in intervals[1:]:
++    ordered = sorted((int(start), int(end)) for start, end in intervals)
++    merged: list[list[int]] = [list(ordered[0])]
++    for start, end in ordered[1:]:
+         last = merged[-1]
+-        if start < last[1]:
++        if start <= last[1]:
+             last[1] = max(last[1], end)
+         else:
+             merged.append([start, end])

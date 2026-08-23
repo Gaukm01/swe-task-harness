@@ -30,6 +30,9 @@ packages = ["src/harness"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+# Fixture repos stand in for arbitrary upstream projects. Linting them to the
+# harness's own style would be wrong, and would churn the gold patch.
+extend-exclude = ["examples/*/repo"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "ANN"]

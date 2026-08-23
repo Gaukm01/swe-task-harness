@@ -1,0 +1,17 @@
+diff --git a/tests/test_intervals.py b/tests/test_intervals.py
+index 9834f27..c68c482 100644
+--- a/tests/test_intervals.py
++++ b/tests/test_intervals.py
+@@ -15,3 +15,12 @@ def test_merges_overlapping():
+ 
+ def test_keeps_disjoint_intervals():
+     assert merge([(1, 2), (5, 6)]) == [(1, 2), (5, 6)]
++
++
++def test_merges_touching_intervals():
++    # [1, 2] and [2, 3] share the endpoint 2, so they describe one continuous span.
++    assert merge([(1, 2), (2, 3)]) == [(1, 3)]
++
++
++def test_sorts_unordered_input():
++    assert merge([(5, 6), (1, 3)]) == [(1, 3), (5, 6)]
