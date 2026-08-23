@@ -55,9 +55,9 @@ def test_unknown_command_is_a_usage_error():
 
 
 def test_pending_command_raises_a_typed_error():
-    result = runner.invoke(app, ["init", str(FIXTURE)])
+    result = runner.invoke(app, ["validate", str(FIXTURE)])
     assert isinstance(result.exception, HarnessError)
-    assert "M3" in (result.exception.fix or "")
+    assert "M4" in (result.exception.fix or "")
 
 
 # -- lint -----------------------------------------------------------------

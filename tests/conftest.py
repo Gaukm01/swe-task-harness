@@ -9,6 +9,33 @@ import pytest
 FIXTURE = Path(__file__).resolve().parents[1] / "examples" / "tiny-fixture"
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers", "docker: needs a real Docker daemon; excluded from the unit suite"
+    )
+
+
+@pytest.fixture(autouse=True)
+def _no_accidental_docker(request, monkeypatch):
+    """Fail any unmarked test that tries to reach the daemon.
+
+    Unit tests run against FakeRuntime by design. Without this guard a test that
+    reaches a real DockerRuntime just... works, slowly, leaving images and a
+    stray harness.db behind -- which is exactly what happened once. Marking the
+    intent is cheap; discovering the leak later is not.
+    """
+    if "docker" in request.keywords:
+        return
+
+    def _forbidden(self, args, **kwargs):
+        raise AssertionError(
+            f"unit test reached the docker daemon: docker {' '.join(args)}. "
+            "Use FakeRuntime, or mark the test with @pytest.mark.docker."
+        )
+
+    monkeypatch.setattr("harness.runtime.docker.DockerRuntime._run", _forbidden)
+
+
 @pytest.fixture
 def tiny_fixture() -> Path:
     """The real tiny fixture bundle, read-only."""

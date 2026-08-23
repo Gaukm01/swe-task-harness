@@ -25,13 +25,17 @@ from harness import __version__
 from harness.cli.render import (
     console,
     err_console,
+    render_base_result,
     render_check_report,
     render_error,
     render_invocation,
     render_unexpected,
 )
 from harness.core.bundle import TaskSpec, compute_bundle_digest, lint_bundle, load_bundle
+from harness.core.cache import compute_cache_key
 from harness.core.errors import ExitCode, HarnessError, UsageError
+from harness.core.phases import Phase, prepare_base
+from harness.runtime.docker import DockerRuntime
 from harness.runtime.probe import collect_doctor_report
 from harness.store.db import DEFAULT_DB_FILENAME, Store
 
@@ -181,7 +185,41 @@ def init(
     ] = False,
 ) -> None:
     """Build the task environment and snapshot it as the BASE phase."""
-    _pending("init", "M3")
+    loaded = load_bundle(bundle)
+    spec = loaded.spec
+    store = state.require_store()
+    store.upsert_task(
+        task_id=spec.task_id,
+        bundle_path=str(bundle.resolve()),
+        bundle_digest=loaded.digest,
+        language=spec.language,
+        framework=spec.tests.framework,
+    )
+
+    runtime = DockerRuntime()
+    # Resolve the pulled digest first when the environment names an image, so a
+    # republished mutable tag invalidates the cache instead of silently changing
+    # what runs.
+    base_image_digest = (
+        runtime.image_digest(spec.environment.image) if spec.environment.image else None
+    )
+    cache_key = compute_cache_key(spec, bundle, base_image_digest=base_image_digest)
+
+    result = prepare_base(runtime, spec, bundle, cache_key=cache_key, no_cache=no_cache)
+
+    store.add_event(
+        kind="phase",
+        payload={
+            "phase": Phase.BASE.value,
+            "task_id": spec.task_id,
+            "image": result.image,
+            "cache_key": cache_key,
+            "cached": result.cached,
+            "duration_ms": result.duration_ms,
+        },
+        invocation_id=state.invocation_id,
+    )
+    render_base_result(result, task_id=spec.task_id, bundle_digest=loaded.digest)
 
 
 @app.command()

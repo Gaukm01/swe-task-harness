@@ -5,7 +5,7 @@
   "language": "python",
   "environment": {
     "dockerfile": "Dockerfile",
-    "repo_path_in_image": "/app"
+    "repo_path_in_image": "/workspace/repo"
   },
   "tests": {
     "framework": "pytest",

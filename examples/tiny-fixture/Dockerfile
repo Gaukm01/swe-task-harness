@@ -2,17 +2,24 @@
 #
 # Multi-arch base, so this builds and runs natively everywhere and the
 # development loop never pays the emulation cost that real SWE-Bench Pro
-# instance images do. No package install step -- PYTHONPATH is enough for a
-# two-module library, which keeps the build to one network round trip.
+# instance images do.
+#
+# git is not optional. BASE preparation truncates history into a single
+# synthetic commit, and the solve container computes solution.diff with
+# `git diff --cached` -- both run *inside* the container, so the image must
+# carry git regardless of how small the project is.
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/workspace/repo
 
-# Before the COPY, so editing the fixture repo does not re-run the install.
-RUN pip install --no-cache-dir pytest==8.3.4
+# Both installs before the COPY, so editing the fixture repo re-runs neither.
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes git \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir pytest==8.3.4
 
-WORKDIR /app
-COPY repo/ /app/
+WORKDIR /workspace/repo
+COPY repo/ /workspace/repo/

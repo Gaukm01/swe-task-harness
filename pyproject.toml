@@ -53,4 +53,6 @@ disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# Integration tests are opt-in: `uv run pytest -m docker`.
+addopts = "-q -m 'not docker'"
+markers = ["docker: needs a real Docker daemon"]

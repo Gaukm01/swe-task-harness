@@ -15,8 +15,10 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+from harness.core.cache import CACHE_KEY_TAG_LEN
 from harness.core.checks import CheckReport, CheckStatus
 from harness.core.errors import HarnessError
+from harness.core.phases import BaseResult
 
 # stdout for results, stderr for diagnostics -- so `task report --format json`
 # stays pipeable once it lands, and the invocation-id footer never corrupts it.
@@ -131,3 +133,44 @@ def render_invocation(record: sqlite3.Row, events: Sequence[sqlite3.Row] = ()) -
     for event in events:
         event_table.add_row(str(event["seq"]), event["at"], event["kind"], event["payload"])
     console.print(event_table)
+
+
+def render_base_result(result: BaseResult, *, task_id: str, bundle_digest: str) -> None:
+    """Render the outcome of `task init`."""
+    table = Table(title=f"task init {task_id}", title_justify="left", show_header=False)
+    table.add_column("field", style="bold", no_wrap=True)
+    table.add_column("value", overflow="fold")
+    table.add_row("phase", "BASE")
+    table.add_row("image", result.image)
+    table.add_row("repo root", result.repo_root)
+    short_key = result.cache_key[:CACHE_KEY_TAG_LEN]
+    table.add_row("cache key", f"{short_key}… (the image tag uses this prefix)")
+    if result.base_commit_sha:
+        table.add_row("base commit", f"{result.base_commit_sha} (synthetic root)")
+    table.add_row(
+        "source", Text("cached snapshot", style="cyan") if result.cached else "built just now"
+    )
+    console.print(table)
+
+    if result.steps:
+        console.print()
+        step_table = Table(title="steps", title_justify="left", header_style="bold")
+        step_table.add_column("", width=4)
+        step_table.add_column("step", style="bold")
+        step_table.add_column("ms", justify="right")
+        for step in result.steps:
+            if step.ok:
+                status = Text("ok", style="green")
+            elif step.tolerated:
+                # Expected and harmless: an image whose repo never had a remote.
+                status = Text("n/a", style="dim")
+            else:
+                status = Text("fail", style="bold red")
+            step_table.add_row(status, step.label, str(step.duration_ms))
+        console.print(step_table)
+
+    console.print()
+    console.print(Text(f"bundle_digest sha256:{bundle_digest}", style="dim"), soft_wrap=True)
+    console.print()
+    verb = "reused" if result.cached else "built"
+    console.print(Text(f"BASE {verb} in {result.duration_ms}ms.", style="bold green"))
