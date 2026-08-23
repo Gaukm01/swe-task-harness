@@ -83,3 +83,61 @@ def test_reusing_the_snapshot_runs_nothing(runtime, built):
     again = prepare_base(runtime, spec, bundle, cache_key=key)
     assert again.cached
     assert again.steps == []
+
+
+# ---------------------------------------------------------------------------
+# The validate lane against a real container
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def validated(runtime, built, tmp_path_factory):
+    from harness.core.bundle import load_bundle as _load
+    from harness.core.ids import new_ulid
+    from harness.core.phases import Phase, phase_tag, validate_task
+
+    spec, bundle_dir, _key, base = built
+    bundle = _load(bundle_dir)
+    validation_id = new_ulid()
+    artifacts = tmp_path_factory.mktemp("validate")
+    result = validate_task(
+        runtime, bundle, base, validation_id=validation_id, artifact_dir=artifacts
+    )
+    yield result, artifacts
+
+    for phase in (Phase.GUARDED, Phase.GOLD):
+        runtime.remove_image(phase_tag(spec.task_id, validation_id, phase), force=True)
+
+
+def test_the_fixture_validates_against_real_pytest(validated):
+    result, _ = validated
+    assert result.ok, result.problems
+
+
+def test_guarded_shows_f2p_failing_and_p2p_passing(validated):
+    from harness.core.results import Bucket
+
+    result, _ = validated
+    outcomes = result.guarded.outcomes
+    assert all(not o.passed for o in outcomes if o.bucket is Bucket.F2P)
+    assert all(o.passed for o in outcomes if o.bucket is Bucket.P2P)
+
+
+def test_gold_shows_everything_passing(validated):
+    result, _ = validated
+    assert all(o.passed for o in result.gold.outcomes)
+
+
+def test_failure_messages_come_from_junit_not_stdout(validated):
+    from harness.core.results import Bucket
+
+    result, _ = validated
+    failing = [o for o in result.guarded.outcomes if o.bucket is Bucket.F2P]
+    # The real pytest assertion diff, parsed out of the junit XML.
+    assert any("assert" in (o.message or "") for o in failing)
+
+
+def test_junit_artifacts_are_kept(validated):
+    _, artifacts = validated
+    assert (artifacts / "guarded-junit.xml").is_file()
+    assert (artifacts / "gold-junit.xml").is_file()

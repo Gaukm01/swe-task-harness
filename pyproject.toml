@@ -56,3 +56,6 @@ testpaths = ["tests"]
 # Integration tests are opt-in: `uv run pytest -m docker`.
 addopts = "-q -m 'not docker'"
 markers = ["docker: needs a real Docker daemon"]
+# Every test here is a function. Without this, domain types named TestStatus /
+# TestOutcome / TestRun are picked up as test classes and warn on every run.
+python_classes = []

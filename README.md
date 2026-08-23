@@ -4,8 +4,9 @@ A CLI that packages SWE-bench-style coding tasks into Docker containers,
 validates them, runs an LLM coding agent against them, grades the result, and
 records everything in SQLite with a static HTML viewer.
 
-> **Status: milestone M3 (runtime + init).** `task doctor`, `task lint`,
-> `task log`, and `task init` are implemented. Every other command is registered with its final
+> **Status: milestone M4 (adapter + validate).** `task doctor`, `task lint`,
+> `task log`, `task init`, `task validate`, and `task show-tests` are
+> implemented. Every other command is registered with its final
 > argument contract and reports the milestone that lands it. The full README
 > with a quickstart arrives at M8.
 
@@ -21,6 +22,8 @@ uv run task doctor
 ```bash
 uv run task lint examples/tiny-fixture   # validate a bundle, print its digest
 uv run task init examples/tiny-fixture   # build + snapshot the BASE phase
+uv run task validate examples/tiny-fixture   # assert the GUARDED and GOLD phases
+uv run task show-tests examples/tiny-fixture # what the guardrail tests actually are
 uv run task log last                     # what the previous command did
 ```
 

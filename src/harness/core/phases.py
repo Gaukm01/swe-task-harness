@@ -24,10 +24,12 @@ from enum import StrEnum
 from pathlib import Path
 
 from harness.adapters import smoke_argv
-from harness.core.bundle import TaskSpec
+from harness.core.bundle import Bundle, TaskSpec
 from harness.core.cache import CACHE_KEY_TAG_LEN
-from harness.core.errors import HarnessError
+from harness.core.errors import BaselineValidationError
+from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.runtime import ContainerRuntime, ContainerSpec, ExecResult
+from harness.core.testrun import CONTAINER_ARTIFACT_DIR, TestRun, run_selectors
 
 # Where the harness expects a repo to live. An image that ships the code
 # somewhere else declares it as `environment.repo_path_in_image`, and the path
@@ -75,8 +77,15 @@ def phase_tag(task_id: str, run_id: str, phase: Phase) -> str:
     return f"harness/{task_id}:{run_id}-{phase.value}"
 
 
-class PhaseError(HarnessError):
-    """A phase transition could not be completed."""
+class PhaseError(BaselineValidationError):
+    """A phase transition could not be completed.
+
+    Exit code 4, not 1. Every way a phase can fail -- a patch that does not
+    apply, a repo that is not where the bundle said, a test runner that is not
+    installed -- means this task's baseline does not hold, and a caller must be
+    able to tell that from a harness fault without reading the output. Genuine
+    infrastructure failures raise DockerUnavailableError (7) instead.
+    """
 
 
 @dataclass
@@ -360,3 +369,247 @@ def prepare_base(
         steps=steps,
         base_commit_sha=head_sha,
     )
+
+
+# ---------------------------------------------------------------------------
+# The validate lane: BASE -> GUARDED -> GOLD
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PhaseAssertion:
+    """What one phase asserted, and whether it held."""
+
+    phase: Phase
+    image: str
+    run: TestRun
+    problems: list[str] = field(default_factory=list)
+    # False once the snapshot has been discarded. See validate_task.
+    retained: bool = True
+
+    @property
+    def ok(self) -> bool:
+        return not self.problems
+
+    @property
+    def outcomes(self) -> list[TestOutcome]:
+        return self.run.outcomes
+
+
+@dataclass
+class ValidationResult:
+    """The full validate lane."""
+
+    validation_id: str
+    base: BaseResult
+    guarded: PhaseAssertion
+    gold: PhaseAssertion
+
+    @property
+    def ok(self) -> bool:
+        return self.guarded.ok and self.gold.ok
+
+    @property
+    def problems(self) -> list[str]:
+        return [*self.guarded.problems, *self.gold.problems]
+
+
+def apply_patch(
+    runtime: ContainerRuntime,
+    container_id: str,
+    spec: TaskSpec,
+    *,
+    patch_text: str,
+    label: str,
+    steps: list[StepLog],
+) -> None:
+    """Write a patch into the container and apply it with git.
+
+    The patch is written as a file rather than piped through a shell heredoc:
+    diff content is full of quotes, backslashes, and `$`, and the only way to
+    be sure none of it is reinterpreted is for it never to touch a shell.
+    """
+    root = repo_root(spec)
+    remote_path = f"{CONTAINER_ARTIFACT_DIR}/{label}.diff"
+    runtime.exec(container_id, ["mkdir", "-p", CONTAINER_ARTIFACT_DIR])
+    runtime.write_file(container_id, remote_path, patch_text)
+
+    result = _record(
+        steps,
+        f"apply {label}",
+        runtime.exec(
+            container_id,
+            _git(root, "apply", "--verbose", "--whitespace=nowarn", remote_path),
+        ),
+    )
+    if not result.ok:
+        raise PhaseError(
+            f"applying {label} failed ({result.failure_summary()}).",
+            fix=f"The patch does not apply to the base tree. Regenerate it against "
+            f"{spec.base_commit or 'the base snapshot'} with `git diff`.",
+        )
+
+
+def _describe(outcomes: list[TestOutcome], statuses: set[TestStatus]) -> str:
+    return ", ".join(
+        f"{outcome.test_id} [{outcome.status.value}]"
+        for outcome in outcomes
+        if outcome.status in statuses
+    )
+
+
+def assert_guarded(run: TestRun) -> list[str]:
+    """GUARDED must show every p2p passing and every f2p failing.
+
+    An f2p test that already passes on the unfixed code proves nothing -- it
+    would let a no-op solver grade as resolved. A p2p test that fails here means
+    the baseline is broken before any solver has touched it.
+    """
+    problems: list[str] = []
+    infra = [o for o in run.outcomes if o.status.is_infra]
+    if infra:
+        return [
+            "the baseline test run did not complete: "
+            + _describe(infra, {TestStatus.TIMEOUT, TestStatus.INFRA_ERROR})
+        ]
+
+    f2p = [o for o in run.outcomes if o.bucket is Bucket.F2P]
+    p2p = [o for o in run.outcomes if o.bucket is Bucket.P2P]
+
+    passing_f2p = [o for o in f2p if o.passed]
+    if passing_f2p:
+        problems.append(
+            "these fail_to_pass tests already pass without the fix, so they prove nothing: "
+            + ", ".join(o.test_id for o in passing_f2p)
+        )
+
+    missing_f2p = [o for o in f2p if o.status is TestStatus.NOT_FOUND]
+    if missing_f2p:
+        problems.append(
+            "these fail_to_pass selectors produced no result: "
+            + ", ".join(o.test_id for o in missing_f2p)
+        )
+
+    failing_p2p = [o for o in p2p if not o.passed]
+    if failing_p2p:
+        problems.append(
+            "these pass_to_pass tests do not pass at baseline: "
+            + _describe(failing_p2p, {o.status for o in failing_p2p})
+        )
+    return problems
+
+
+def assert_gold(run: TestRun) -> list[str]:
+    """GOLD must show everything passing.
+
+    If the gold patch does not make the f2p tests pass, the task is
+    unsatisfiable and no solver result from it would mean anything.
+    """
+    infra = [o for o in run.outcomes if o.status.is_infra]
+    if infra:
+        return [
+            "the gold test run did not complete: "
+            + _describe(infra, {TestStatus.TIMEOUT, TestStatus.INFRA_ERROR})
+        ]
+
+    problems: list[str] = []
+    failing_f2p = [o for o in run.outcomes if o.bucket is Bucket.F2P and not o.passed]
+    if failing_f2p:
+        problems.append(
+            "the gold patch does not make these fail_to_pass tests pass: "
+            + _describe(failing_f2p, {o.status for o in failing_f2p})
+        )
+
+    failing_p2p = [o for o in run.outcomes if o.bucket is Bucket.P2P and not o.passed]
+    if failing_p2p:
+        problems.append(
+            "the gold patch breaks these pass_to_pass tests: "
+            + _describe(failing_p2p, {o.status for o in failing_p2p})
+        )
+    return problems
+
+
+def validate_task(
+    runtime: ContainerRuntime,
+    bundle: Bundle,
+    base: BaseResult,
+    *,
+    validation_id: str,
+    artifact_dir: Path,
+    keep_snapshots: bool = False,
+) -> ValidationResult:
+    """Run the validate lane: BASE -> GUARDED -> GOLD.
+
+    GUARDED and GOLD chain inside one container, which is correct: GOLD is
+    defined as GUARDED plus the gold patch. Note what does *not* happen here --
+    nothing downstream branches from either image. SOLVE and SCORED start from
+    BASE, because these two have the guardrail tests on disk.
+    """
+    spec = bundle.spec
+    root = repo_root(spec)
+    steps: list[StepLog] = []
+
+    container_id = runtime.create(
+        ContainerSpec(image=base.image, platform=spec.environment.platform, workdir=root)
+    )
+    try:
+        apply_patch(
+            runtime,
+            container_id,
+            spec,
+            patch_text=bundle.test_patch,
+            label="test_patch",
+            steps=steps,
+        )
+        guarded_run = run_selectors(
+            runtime,
+            container_id,
+            spec,
+            label="guarded",
+            workdir=root,
+            artifact_dir=artifact_dir,
+        )
+        guarded_image = runtime.commit(
+            container_id, phase_tag(spec.task_id, validation_id, Phase.GUARDED)
+        )
+        guarded = PhaseAssertion(
+            phase=Phase.GUARDED,
+            image=guarded_image,
+            run=guarded_run,
+            problems=assert_guarded(guarded_run),
+        )
+
+        apply_patch(
+            runtime, container_id, spec, patch_text=bundle.patch, label="patch", steps=steps
+        )
+        gold_run = run_selectors(
+            runtime,
+            container_id,
+            spec,
+            label="gold",
+            workdir=root,
+            artifact_dir=artifact_dir,
+        )
+        gold_image = runtime.commit(
+            container_id, phase_tag(spec.task_id, validation_id, Phase.GOLD)
+        )
+        gold = PhaseAssertion(
+            phase=Phase.GOLD, image=gold_image, run=gold_run, problems=assert_gold(gold_run)
+        )
+    finally:
+        runtime.remove_container(container_id, force=True)
+
+    base.steps.extend(steps)
+    result = ValidationResult(validation_id=validation_id, base=base, guarded=guarded, gold=gold)
+
+    # Keep the evidence only when there is something to investigate. A passing
+    # validation's snapshots are two full image layers per invocation with
+    # nothing to look at; on a multi-gigabyte instance image, a handful of runs
+    # fills a disk. A failing one is exactly when `task shell --phase guarded`
+    # earns its keep, so those stay.
+    if result.ok and not keep_snapshots:
+        for assertion in (result.guarded, result.gold):
+            runtime.remove_image(assertion.image, force=True)
+            assertion.retained = False
+
+    return result

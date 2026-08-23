@@ -10,15 +10,19 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Sequence
+from pathlib import Path
 
 from rich.console import Console
+from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 
+from harness.core.bundle import Bundle
 from harness.core.cache import CACHE_KEY_TAG_LEN
 from harness.core.checks import CheckReport, CheckStatus
 from harness.core.errors import HarnessError
-from harness.core.phases import BaseResult
+from harness.core.phases import BaseResult, PhaseAssertion, ValidationResult
+from harness.core.results import Bucket, TestStatus
 
 # stdout for results, stderr for diagnostics -- so `task report --format json`
 # stays pipeable once it lands, and the invocation-id footer never corrupts it.
@@ -174,3 +178,113 @@ def render_base_result(result: BaseResult, *, task_id: str, bundle_digest: str) 
     console.print()
     verb = "reused" if result.cached else "built"
     console.print(Text(f"BASE {verb} in {result.duration_ms}ms.", style="bold green"))
+
+
+_STATUS_COLOUR: dict[TestStatus, str] = {
+    TestStatus.PASSED: "green",
+    TestStatus.FAILED: "red",
+    TestStatus.ERROR: "red",
+    TestStatus.COLLECTION_ERROR: "bold red",
+    TestStatus.NOT_FOUND: "bold magenta",
+    TestStatus.SKIPPED: "yellow",
+    TestStatus.TIMEOUT: "bold yellow",
+    TestStatus.INFRA_ERROR: "bold yellow",
+}
+
+
+def _status_text(status: TestStatus) -> Text:
+    return Text(status.value, style=_STATUS_COLOUR.get(status, "white"))
+
+
+def _outcome_table(assertion: PhaseAssertion, *, expectation: str) -> Table:
+    table = Table(
+        title=f"{assertion.phase.value.upper()} — {expectation}",
+        title_justify="left",
+        header_style="bold",
+    )
+    table.add_column("bucket", width=6)
+    table.add_column("test")
+    table.add_column("status")
+    table.add_column("ms", justify="right")
+    for outcome in assertion.outcomes:
+        table.add_row(
+            Text(outcome.bucket.value, style="cyan" if outcome.bucket is Bucket.F2P else "blue"),
+            outcome.test_id,
+            _status_text(outcome.status),
+            str(outcome.duration_ms),
+        )
+    return table
+
+
+def render_validation(result: ValidationResult, *, task_id: str, artifact_dir: Path) -> None:
+    """Render the validate lane: what each phase asserted and whether it held."""
+    header = Table(title=f"task validate {task_id}", title_justify="left", show_header=False)
+    header.add_column("field", style="bold", no_wrap=True)
+    header.add_column("value", overflow="fold")
+    header.add_row("validation", result.validation_id)
+    header.add_row("base image", result.base.image)
+    for assertion in (result.guarded, result.gold):
+        label = f"{assertion.phase.value} image"
+        if assertion.retained:
+            header.add_row(label, assertion.image)
+        else:
+            header.add_row(label, Text("discarded (validation passed)", style="dim"))
+    header.add_row("artifacts", str(artifact_dir))
+    console.print(header)
+
+    console.print()
+    console.print(_outcome_table(result.guarded, expectation="every p2p passes, every f2p fails"))
+    console.print()
+    console.print(_outcome_table(result.gold, expectation="everything passes"))
+
+    failures = [
+        (assertion, problem)
+        for assertion in (result.guarded, result.gold)
+        for problem in assertion.problems
+    ]
+    if failures:
+        console.print()
+        for assertion, problem in failures:
+            console.print(Text(f"{assertion.phase.value}: ", style="bold red"), end="")
+            console.print(Text(problem, style="red"))
+
+    console.print()
+    if result.ok:
+        console.print(
+            Text(
+                f"validated: {task_id} holds at GUARDED and GOLD.",
+                style="bold green",
+            )
+        )
+    else:
+        console.print(Text(f"not valid: {task_id}", style="bold red"))
+
+
+def render_show_tests(bundle: Bundle) -> None:
+    """Render the guardrail tests a bundle carries. The authoring aid."""
+    spec = bundle.spec
+    header = Table(title=f"task show-tests {spec.task_id}", title_justify="left", show_header=False)
+    header.add_column("field", style="bold", no_wrap=True)
+    header.add_column("value", overflow="fold")
+    header.add_row("framework", spec.tests.framework)
+    header.add_row("run command", spec.tests.run_cmd_template)
+    header.add_row("timeout", f"{spec.tests.timeout_s}s")
+    header.add_row("test path globs", ", ".join(spec.tests.test_path_globs))
+    console.print(header)
+
+    selectors = Table(title="selectors", title_justify="left", header_style="bold", expand=True)
+    selectors.add_column("bucket", width=6)
+    # The selector is the point of this table, so it gets the room: folding it
+    # keeps the whole node id readable instead of eliding the part that differs.
+    selectors.add_column("selector", overflow="fold", ratio=3)
+    selectors.add_column("must", width=13, no_wrap=True)
+    for selector in spec.tests.fail_to_pass:
+        selectors.add_row(Text("f2p", style="cyan"), selector, "fail → pass")
+    for selector in spec.tests.pass_to_pass:
+        selectors.add_row(Text("p2p", style="blue"), selector, "pass → pass")
+    console.print()
+    console.print(selectors)
+
+    console.print()
+    console.print(Text("test_patch.diff", style="bold"))
+    console.print(Syntax(bundle.test_patch, "diff", theme="ansi_dark", word_wrap=True))

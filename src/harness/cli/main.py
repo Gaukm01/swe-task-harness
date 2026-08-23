@@ -29,12 +29,26 @@ from harness.cli.render import (
     render_check_report,
     render_error,
     render_invocation,
+    render_show_tests,
     render_unexpected,
+    render_validation,
 )
-from harness.core.bundle import TaskSpec, compute_bundle_digest, lint_bundle, load_bundle
+from harness.core.bundle import (
+    Bundle,
+    TaskSpec,
+    compute_bundle_digest,
+    lint_bundle,
+    load_bundle,
+)
 from harness.core.cache import compute_cache_key
-from harness.core.errors import ExitCode, HarnessError, UsageError
-from harness.core.phases import Phase, prepare_base
+from harness.core.errors import (
+    BaselineValidationError,
+    ExitCode,
+    HarnessError,
+    UsageError,
+)
+from harness.core.ids import new_ulid
+from harness.core.phases import BaseResult, Phase, prepare_base, validate_task
 from harness.runtime.docker import DockerRuntime
 from harness.runtime.probe import collect_doctor_report
 from harness.store.db import DEFAULT_DB_FILENAME, Store
@@ -185,41 +199,8 @@ def init(
     ] = False,
 ) -> None:
     """Build the task environment and snapshot it as the BASE phase."""
-    loaded = load_bundle(bundle)
-    spec = loaded.spec
-    store = state.require_store()
-    store.upsert_task(
-        task_id=spec.task_id,
-        bundle_path=str(bundle.resolve()),
-        bundle_digest=loaded.digest,
-        language=spec.language,
-        framework=spec.tests.framework,
-    )
-
-    runtime = DockerRuntime()
-    # Resolve the pulled digest first when the environment names an image, so a
-    # republished mutable tag invalidates the cache instead of silently changing
-    # what runs.
-    base_image_digest = (
-        runtime.image_digest(spec.environment.image) if spec.environment.image else None
-    )
-    cache_key = compute_cache_key(spec, bundle, base_image_digest=base_image_digest)
-
-    result = prepare_base(runtime, spec, bundle, cache_key=cache_key, no_cache=no_cache)
-
-    store.add_event(
-        kind="phase",
-        payload={
-            "phase": Phase.BASE.value,
-            "task_id": spec.task_id,
-            "image": result.image,
-            "cache_key": cache_key,
-            "cached": result.cached,
-            "duration_ms": result.duration_ms,
-        },
-        invocation_id=state.invocation_id,
-    )
-    render_base_result(result, task_id=spec.task_id, bundle_digest=loaded.digest)
+    loaded, result = _ensure_base(bundle, no_cache=no_cache)
+    render_base_result(result, task_id=loaded.spec.task_id, bundle_digest=loaded.digest)
 
 
 @app.command()
@@ -228,9 +209,60 @@ def validate(
     repeat: Annotated[
         int, typer.Option("--repeat", help="Run the guardrail assertions N times.")
     ] = 1,
+    keep_snapshots: Annotated[
+        bool,
+        typer.Option(
+            "--keep-snapshots",
+            help="Keep the GUARDED/GOLD images even when validation passes.",
+        ),
+    ] = False,
 ) -> None:
     """Assert the GUARDED and GOLD phases hold: p2p pass, f2p fail then pass."""
-    _pending("validate", "M4")
+    if repeat != 1:
+        raise UsageError(
+            "--repeat is not implemented.",
+            fix="Flake detection is on the cut list, after M8. Run `task validate` again "
+            "by hand if you need a second opinion.",
+        )
+
+    loaded, base = _ensure_base(bundle)
+    runtime = DockerRuntime()
+    validation_id = new_ulid()
+    artifact_dir = Path("runs") / validation_id / "validate"
+
+    result = validate_task(
+        runtime,
+        loaded,
+        base,
+        validation_id=validation_id,
+        artifact_dir=artifact_dir,
+        keep_snapshots=keep_snapshots,
+    )
+
+    store = state.require_store()
+    for assertion in (result.guarded, result.gold):
+        store.add_event(
+            kind="phase",
+            payload={
+                "phase": assertion.phase.value,
+                "task_id": loaded.spec.task_id,
+                "image": assertion.image,
+                "ok": assertion.ok,
+                "problems": assertion.problems,
+            },
+            invocation_id=state.invocation_id,
+        )
+
+    render_validation(result, task_id=loaded.spec.task_id, artifact_dir=artifact_dir)
+
+    if not result.ok:
+        # Exit 4 exists so a wrapper can tell "this bundle is broken" from
+        # "this solver failed" without reading any output.
+        raise BaselineValidationError(
+            f"{loaded.spec.task_id} did not validate: {result.problems[0]}",
+            fix="Fix the bundle or the fixture, then re-run `task validate`. "
+            f"Artifacts, including junit XML, are in {artifact_dir}.",
+        )
 
 
 @app.command()
@@ -286,8 +318,14 @@ def shell(
 
 @app.command("show-tests")
 def show_tests(bundle: BundleArg) -> None:
-    """Render a bundle's test patch and selector lists. Authoring aid."""
-    _pending("show-tests", "M4")
+    """Render a bundle's test patch and selector lists. Authoring aid.
+
+    The bundle format stores guardrail tests as a diff, which cannot be read as
+    files. This is the mitigation for that: it shows exactly what will be
+    applied and which selectors decide the outcome.
+    """
+    loaded = load_bundle(bundle)
+    render_show_tests(loaded)
 
 
 @app.command("import")
@@ -307,6 +345,49 @@ def gc(
 ) -> None:
     """Remove old phase snapshots."""
     _pending("gc", "M8")
+
+
+def _ensure_base(bundle: Path, *, no_cache: bool = False) -> tuple[Bundle, BaseResult]:
+    """Load the bundle, register the task, and make sure a BASE snapshot exists.
+
+    Shared by `init` and `validate`. `validate` cannot be run against a bundle
+    that has not been built, and making the user run `init` first would be
+    friction with no safety value -- the cache makes the second call free.
+    """
+    loaded = load_bundle(bundle)
+    spec = loaded.spec
+
+    state.require_store().upsert_task(
+        task_id=spec.task_id,
+        bundle_path=str(bundle.resolve()),
+        bundle_digest=loaded.digest,
+        language=spec.language,
+        framework=spec.tests.framework,
+    )
+
+    runtime = DockerRuntime()
+    # Resolve the pulled digest first when the environment names an image, so a
+    # republished mutable tag invalidates the cache instead of silently changing
+    # what runs.
+    base_image_digest = (
+        runtime.image_digest(spec.environment.image) if spec.environment.image else None
+    )
+    cache_key = compute_cache_key(spec, bundle, base_image_digest=base_image_digest)
+    result = prepare_base(runtime, spec, bundle, cache_key=cache_key, no_cache=no_cache)
+
+    state.require_store().add_event(
+        kind="phase",
+        payload={
+            "phase": Phase.BASE.value,
+            "task_id": spec.task_id,
+            "image": result.image,
+            "cache_key": cache_key,
+            "cached": result.cached,
+            "duration_ms": result.duration_ms,
+        },
+        invocation_id=state.invocation_id,
+    )
+    return loaded, result
 
 
 def _peek_db_path(argv: list[str]) -> Path:

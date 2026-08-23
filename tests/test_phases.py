@@ -227,3 +227,297 @@ def test_every_exec_is_an_argv_list_with_no_shell(spec, tiny_fixture, key):
         assert all(isinstance(token, str) for token in argv)
         # Nothing is handed to a host shell, so no phase step may smuggle one in.
         assert argv[0] not in {"sh", "bash", "zsh"}
+
+
+# ---------------------------------------------------------------------------
+# The validate lane
+# ---------------------------------------------------------------------------
+
+import json  # noqa: E402
+
+from harness.core.bundle import load_bundle as _load_bundle  # noqa: E402
+from harness.core.phases import (  # noqa: E402
+    assert_gold,
+    assert_guarded,
+    validate_task,
+)
+from harness.core.results import Bucket, TestStatus  # noqa: E402
+from harness.core.runtime import ExecResult  # noqa: E402
+from harness.core.testrun import TestRun  # noqa: E402
+
+
+def junit_for(passed: list[str], failed: list[str]) -> str:
+    """A junit document reporting these pytest node ids as passed / failed."""
+    from harness.adapters.pytest_adapter import selector_to_junit_key
+
+    rows = []
+    for selector in passed:
+        classname, name = selector_to_junit_key(selector)
+        rows.append(f'<testcase classname="{classname}" name="{name}" time="0.01"/>')
+    for selector in failed:
+        classname, name = selector_to_junit_key(selector)
+        rows.append(
+            f'<testcase classname="{classname}" name="{name}" time="0.01">'
+            f'<failure message="assert failed">boom</failure></testcase>'
+        )
+    return "<testsuite>" + "".join(rows) + "</testsuite>"
+
+
+@pytest.fixture
+def bundle(tiny_fixture):
+    return _load_bundle(tiny_fixture)
+
+
+def wire_validation(runtime, bundle, *, guarded_junit: str, gold_junit: str):
+    """Make copy_out hand back scripted junit for each phase."""
+    runtime.copy_out_payloads["/tmp/harness/guarded-junit.xml"] = guarded_junit
+    runtime.copy_out_payloads["/tmp/harness/gold-junit.xml"] = gold_junit
+
+
+def run_validation(runtime, bundle, tiny_fixture, tmp_path, key):
+    base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
+    return validate_task(
+        runtime, bundle, base, validation_id="01VALIDATE", artifact_dir=tmp_path / "artifacts"
+    )
+
+
+def healthy(bundle):
+    """The junit pair a correct bundle produces."""
+    f2p = bundle.spec.tests.fail_to_pass
+    p2p = bundle.spec.tests.pass_to_pass
+    return junit_for(p2p, f2p), junit_for(p2p + f2p, [])
+
+
+def test_a_healthy_bundle_validates(runtime_and_bundle):
+    result = runtime_and_bundle
+    assert result.ok
+    assert result.guarded.problems == []
+    assert result.gold.problems == []
+
+
+@pytest.fixture
+def runtime_and_bundle(bundle, tiny_fixture, tmp_path, key):
+    runtime = FakeRuntime()
+    guarded_junit, gold_junit = healthy(bundle)
+    wire_validation(runtime, bundle, guarded_junit=guarded_junit, gold_junit=gold_junit)
+    return run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+
+
+def test_both_patches_are_applied_in_order(bundle, tiny_fixture, tmp_path, key):
+    runtime = FakeRuntime()
+    guarded_junit, gold_junit = healthy(bundle)
+    wire_validation(runtime, bundle, guarded_junit=guarded_junit, gold_junit=gold_junit)
+    run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+
+    # test_patch first (GUARDED), then patch (GOLD): GOLD is defined as GUARDED
+    # plus the gold patch.
+    assert runtime.index_of("apply", "test_patch.diff") < runtime.index_of(
+        "apply", "/tmp/harness/patch.diff"
+    )
+
+
+def test_patches_are_written_as_files_never_piped_through_a_shell(
+    bundle, tiny_fixture, tmp_path, key
+):
+    runtime = FakeRuntime()
+    guarded_junit, gold_junit = healthy(bundle)
+    wire_validation(runtime, bundle, guarded_junit=guarded_junit, gold_junit=gold_junit)
+    run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+
+    assert "/tmp/harness/test_patch.diff" in runtime.files_written
+    assert runtime.files_written["/tmp/harness/test_patch.diff"] == bundle.test_patch
+    for argv in runtime.exec_argvs():
+        assert argv[0] not in {"sh", "bash", "zsh"}
+
+
+def test_both_phases_are_snapshotted(runtime_and_bundle):
+    result = runtime_and_bundle
+    assert result.guarded.image.endswith("01VALIDATE-guarded")
+    assert result.gold.image.endswith("01VALIDATE-gold")
+
+
+def test_the_container_is_removed_even_when_a_patch_fails(bundle, tiny_fixture, tmp_path, key):
+    runtime = FakeRuntime()
+    runtime.script(argv_contains("git", "apply"), exit_code=1, stderr="patch does not apply")
+    with pytest.raises(PhaseError, match="does not apply|applying"):
+        run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+    assert runtime.leaked_containers == []
+
+
+def test_junit_and_logs_are_written_to_the_artifact_dir(bundle, tiny_fixture, tmp_path, key):
+    runtime = FakeRuntime()
+    guarded_junit, gold_junit = healthy(bundle)
+    wire_validation(runtime, bundle, guarded_junit=guarded_junit, gold_junit=gold_junit)
+    run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+
+    artifacts = tmp_path / "artifacts"
+    for name in (
+        "guarded-junit.xml",
+        "gold-junit.xml",
+        "guarded-stdout.txt",
+        "gold-stderr.txt",
+    ):
+        assert (artifacts / name).is_file(), name
+
+
+# -- the assertions themselves --------------------------------------------
+
+
+def _run(outcomes):
+    return TestRun(
+        label="x",
+        outcomes=outcomes,
+        exec_result=ExecResult(argv=[], exit_code=1, stdout="", stderr="", duration_ms=1),
+        junit_path=None,
+        argv=[],
+    )
+
+
+def _o(test_id, bucket, status):
+    from harness.core.results import TestOutcome
+
+    return TestOutcome(test_id=test_id, bucket=bucket, status=status)
+
+
+def test_guarded_rejects_an_f2p_that_already_passes():
+    # It would let a no-op solver grade as resolved.
+    problems = assert_guarded(
+        _run([_o("f1", Bucket.F2P, TestStatus.PASSED), _o("p1", Bucket.P2P, TestStatus.PASSED)])
+    )
+    assert any("already pass" in p for p in problems)
+
+
+def test_guarded_rejects_a_p2p_failing_at_baseline():
+    problems = assert_guarded(
+        _run([_o("f1", Bucket.F2P, TestStatus.FAILED), _o("p1", Bucket.P2P, TestStatus.FAILED)])
+    )
+    assert any("do not pass at baseline" in p for p in problems)
+
+
+def test_guarded_rejects_a_missing_f2p_selector():
+    problems = assert_guarded(
+        _run([_o("f1", Bucket.F2P, TestStatus.NOT_FOUND), _o("p1", Bucket.P2P, TestStatus.PASSED)])
+    )
+    assert any("produced no result" in p for p in problems)
+
+
+def test_guarded_accepts_the_correct_shape():
+    assert (
+        assert_guarded(
+            _run([_o("f1", Bucket.F2P, TestStatus.FAILED), _o("p1", Bucket.P2P, TestStatus.PASSED)])
+        )
+        == []
+    )
+
+
+def test_an_infra_failure_at_guarded_is_reported_as_infra_not_as_a_bad_bundle():
+    problems = assert_guarded(_run([_o("f1", Bucket.F2P, TestStatus.TIMEOUT)]))
+    assert len(problems) == 1
+    assert "did not complete" in problems[0]
+
+
+def test_gold_rejects_an_f2p_the_patch_does_not_fix():
+    problems = assert_gold(
+        _run([_o("f1", Bucket.F2P, TestStatus.FAILED), _o("p1", Bucket.P2P, TestStatus.PASSED)])
+    )
+    assert any("does not make these fail_to_pass tests pass" in p for p in problems)
+
+
+def test_gold_rejects_a_patch_that_breaks_a_p2p():
+    problems = assert_gold(
+        _run([_o("f1", Bucket.F2P, TestStatus.PASSED), _o("p1", Bucket.P2P, TestStatus.FAILED)])
+    )
+    assert any("breaks these pass_to_pass" in p for p in problems)
+
+
+def test_gold_accepts_everything_passing():
+    assert (
+        assert_gold(
+            _run([_o("f1", Bucket.F2P, TestStatus.PASSED), _o("p1", Bucket.P2P, TestStatus.PASSED)])
+        )
+        == []
+    )
+
+
+def test_a_broken_gold_patch_surfaces_as_a_validation_failure(bundle, tiny_fixture, tmp_path, key):
+    # The acceptance scenario, in unit form: gold runs but does not fix the f2p.
+    runtime = FakeRuntime()
+    f2p = bundle.spec.tests.fail_to_pass
+    p2p = bundle.spec.tests.pass_to_pass
+    wire_validation(
+        runtime,
+        bundle,
+        guarded_junit=junit_for(p2p, f2p),
+        gold_junit=junit_for(p2p, f2p),  # still failing under gold
+    )
+    result = run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+    assert not result.ok
+    assert result.guarded.ok
+    assert not result.gold.ok
+
+
+del json
+
+
+def test_phase_errors_exit_four_not_one():
+    """A broken bundle must be distinguishable from a harness fault by exit code alone."""
+    from harness.core.errors import ExitCode
+
+    assert PhaseError("x").exit_code is ExitCode.BASELINE_FAILED
+
+
+def test_an_unappliable_patch_is_a_baseline_failure(bundle, tiny_fixture, tmp_path, key):
+    from harness.core.errors import ExitCode
+
+    runtime = FakeRuntime()
+    runtime.script(argv_contains("git", "apply"), exit_code=1, stderr="patch does not apply")
+    with pytest.raises(PhaseError) as caught:
+        run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+    assert caught.value.exit_code is ExitCode.BASELINE_FAILED
+    assert "does not apply" in (caught.value.fix or "")
+
+
+def test_passing_validation_discards_its_snapshots(bundle, tiny_fixture, tmp_path, key):
+    # Two full image layers per invocation, with nothing to look at.
+    runtime = FakeRuntime()
+    guarded_junit, gold_junit = healthy(bundle)
+    wire_validation(runtime, bundle, guarded_junit=guarded_junit, gold_junit=gold_junit)
+    result = run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+
+    assert result.ok
+    assert not result.guarded.retained
+    assert not result.gold.retained
+    assert sorted(runtime.removed_images) == sorted([result.guarded.image, result.gold.image])
+
+
+def test_failing_validation_keeps_its_snapshots(bundle, tiny_fixture, tmp_path, key):
+    # This is exactly when `task shell --phase guarded` earns its keep.
+    runtime = FakeRuntime()
+    f2p = bundle.spec.tests.fail_to_pass
+    p2p = bundle.spec.tests.pass_to_pass
+    wire_validation(
+        runtime, bundle, guarded_junit=junit_for(p2p, f2p), gold_junit=junit_for(p2p, f2p)
+    )
+    result = run_validation(runtime, bundle, tiny_fixture, tmp_path, key)
+
+    assert not result.ok
+    assert result.gold.retained
+    assert runtime.removed_images == []
+
+
+def test_keep_snapshots_overrides_the_discard(bundle, tiny_fixture, tmp_path, key):
+    runtime = FakeRuntime()
+    guarded_junit, gold_junit = healthy(bundle)
+    wire_validation(runtime, bundle, guarded_junit=guarded_junit, gold_junit=gold_junit)
+    base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
+    result = validate_task(
+        runtime,
+        bundle,
+        base,
+        validation_id="01KEEP",
+        artifact_dir=tmp_path / "a",
+        keep_snapshots=True,
+    )
+    assert result.ok
+    assert result.guarded.retained
+    assert runtime.removed_images == []
