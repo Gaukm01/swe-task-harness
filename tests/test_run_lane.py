@@ -198,12 +198,10 @@ def test_solver_strings_resolve():
     assert resolve_solver("cmd:echo hi").kind == "cmd"
 
 
-def test_unimplemented_and_unknown_solvers_name_the_alternative():
+def test_an_unknown_solver_names_the_alternatives():
     from harness.core.errors import UsageError
 
     with pytest.raises(UsageError) as caught:
-        resolve_solver("agent")
-    assert "M6" in (caught.value.fix or "")
-    assert "gold" in (caught.value.fix or "")
-    with pytest.raises(UsageError, match="unknown solver"):
         resolve_solver("wat")
+    assert "gold" in (caught.value.fix or "")
+    assert "replay" in (caught.value.fix or "")

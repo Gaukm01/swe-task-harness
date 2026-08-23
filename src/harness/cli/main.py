@@ -13,6 +13,7 @@ lands them.
 
 from __future__ import annotations
 
+import itertools
 import os
 import sys
 from dataclasses import dataclass, field
@@ -53,7 +54,7 @@ from harness.core.phases import BaseResult, Phase, prepare_base, validate_task
 from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.run import execute_run
 from harness.report import build_report, write_report
-from harness.solvers import resolve_solver
+from harness.solvers import DEFAULT_MAX_TURNS, resolve_solver
 from harness.runtime.docker import DockerRuntime
 from harness.runtime.probe import collect_doctor_report
 from harness.store.db import DEFAULT_DB_FILENAME, Store, utc_now
@@ -277,7 +278,9 @@ def run(
         str, typer.Option("--solver", help="gold | noop | agent | replay:<run_id> | cmd:<command>")
     ],
     model: Annotated[str | None, typer.Option("--model", help="Model for --solver agent.")] = None,
-    max_turns: Annotated[int, typer.Option("--max-turns", help="Agent turn ceiling.")] = 75,
+    max_turns: Annotated[
+        int, typer.Option("--max-turns", help="Agent turn ceiling.")
+    ] = DEFAULT_MAX_TURNS,
     max_cost_usd: Annotated[
         float | None, typer.Option("--max-cost-usd", help="Agent spend ceiling.")
     ] = None,
@@ -286,13 +289,56 @@ def run(
     ] = False,
 ) -> None:
     """Validate the baseline, run a solver, grade the result, and write a report."""
-    solver_impl = resolve_solver(solver)
     loaded, base = _ensure_base(bundle, no_cache=no_cache)
     store = state.require_store()
 
     run_id = new_ulid()
     artifact_dir = Path("runs") / run_id
     started_at = utc_now()
+
+    # The run row is written before the solver starts, for the same reason the
+    # invocation row is: events reference it as they happen, and a run killed
+    # halfway should still leave a readable trajectory rather than a foreign-key
+    # error. `record_run` upserts, so the final write updates this row.
+    store.record_run(
+        run_id=run_id,
+        invocation_id=state.invocation_id,
+        task_id=loaded.spec.task_id,
+        bundle_digest=loaded.digest,
+        image_digest=base.image,
+        cache_key=base.cache_key,
+        solver_kind=solver.partition(":")[0],
+        solver_model=model,
+        phase_reached=Phase.BASE.value,
+        outcome=None,
+        gaming_flags=[],
+        turns=0,
+        cost_usd=0.0,
+        timings_ms={},
+        started_at=started_at,
+    )
+
+    # Agent turns land in `events` as they happen.
+    sequence = itertools.count()
+
+    def record_event(kind: str, payload: dict[str, object]) -> None:
+        store.add_event(
+            kind=kind,
+            payload=payload,
+            run_id=run_id,
+            invocation_id=state.invocation_id,
+            seq=next(sequence),
+        )
+
+    solver_impl = resolve_solver(
+        solver,
+        model=model,
+        max_turns=max_turns,
+        max_cost_usd=max_cost_usd,
+        cassette_dir=artifact_dir / "llm",
+        on_event=record_event,
+        wall_clock_s=float(loaded.spec.tests.timeout_s * 4),
+    )
 
     # Invariant 3: a cached baseline is acceptable only when the bundle digest
     # *and* the environment cache key both match. Anything else re-validates.
