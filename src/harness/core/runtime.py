@@ -43,12 +43,39 @@ class ExecResult:
         return self.exit_code == 0 and not self.timed_out
 
     def failure_summary(self, limit: int = 400) -> str:
-        """A one-line reason this command failed, for error messages."""
+        """A one-line reason this command failed, for error messages.
+
+        Prefers a line that looks like a diagnosis over the last line printed.
+        Tools that narrate their progress -- `git apply --verbose` is the one
+        that caught this -- interleave status with errors, so the final line is
+        routinely `Checking patch some/unrelated/file...` while the actual
+        cause sat several lines earlier. Reporting the wrong file sends whoever
+        reads it to the wrong place entirely.
+        """
         if self.timed_out:
             return f"timed out after {self.duration_ms}ms"
-        tail = (self.stderr or self.stdout).strip().splitlines()
-        detail = tail[-1] if tail else "no output"
-        return f"exit {self.exit_code}: {detail[:limit]}"
+
+        lines = [ln.strip() for ln in (self.stderr + "\n" + self.stdout).splitlines() if ln.strip()]
+        if not lines:
+            return f"exit {self.exit_code}: no output"
+
+        # Most specific first. `git apply` prints `error: while searching for:`
+        # followed by a blob of context and only then names the file that
+        # actually failed, so the first `error:` line is the least useful one.
+        def _rank(line: str) -> int:
+            lowered = line.lower()
+            if "does not apply" in lowered or "already exists" in lowered:
+                return 0
+            if "patch failed" in lowered or "no such file" in lowered:
+                return 1
+            if lowered.startswith(("error:", "fatal:")) and lowered.rstrip().endswith(":"):
+                return 3  # a header introducing context, not the diagnosis
+            if lowered.startswith(("error:", "fatal:")):
+                return 2
+            return 4
+
+        best = min(lines, key=_rank)
+        return f"exit {self.exit_code}: {(best if _rank(best) < 4 else lines[-1])[:limit]}"
 
 
 @dataclass(frozen=True)

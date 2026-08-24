@@ -625,3 +625,28 @@ def test_nothing_is_cloned_when_the_image_ships_the_repo(spec, tiny_fixture, key
     runtime = FakeRuntime()
     run_base(runtime, spec, tiny_fixture, key)
     assert not runtime.ran("git", "clone")
+
+
+def test_a_failure_summary_reports_the_diagnosis_not_the_last_line():
+    """`git apply --verbose` narrates progress, so the last line is often noise.
+
+    Reporting `Checking patch some/other/file...` instead of the actual
+    `error: ... does not apply` sends the reader to the wrong file.
+    """
+    from harness.core.runtime import ExecResult
+
+    result = ExecResult(
+        argv=["git", "apply"],
+        exit_code=1,
+        stdout="",
+        stderr=(
+            "Checking patch a/one.txt...\n"
+            "error: patch failed: fixtures/multipart.txt:143\n"
+            "error: fixtures/multipart.txt: patch does not apply\n"
+            "Checking patch z/last-unrelated.py...\n"
+        ),
+        duration_ms=5,
+    )
+    summary = result.failure_summary()
+    assert "multipart.txt" in summary
+    assert "last-unrelated" not in summary

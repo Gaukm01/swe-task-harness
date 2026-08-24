@@ -1,0 +1,39 @@
+{
+  "task_id": "internetarchive__openlib-9ec945ab821fb156c04c7d2e2810debb",
+  "repo": "https://github.com/internetarchive/openlibrary",
+  "base_commit": "1a3fab3f0b319e0df49dd742ce2ffa0d747d1b44",
+  "language": "python",
+  "environment": {
+    "image": "jefzda/sweap-images:internetarchive.openlibrary-internetarchive__openlibrary-6afdb09df692223c3a31df65cfa92f15e5614c01-v08d8e8889ec945ab821fb156c04c7",
+    "platform": "linux/amd64",
+    "repo_path_in_image": "/app"
+  },
+  "tests": {
+    "framework": "pytest",
+    "run_cmd_template": "python -m pytest {selectors} --junitxml={out}",
+    "fail_to_pass": [
+      "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_lists",
+      "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_paths"
+    ],
+    "pass_to_pass": [
+      "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_full_flow",
+      "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_parse_docs",
+      "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_type_to_argparse",
+      "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_is_optional"
+    ],
+    "test_path_globs": [
+      "scripts/solr_builder/tests/test_fn_to_cli.py",
+      "tests/**",
+      "test/**",
+      "**/test_*.py",
+      "**/*_test.py",
+      "**/*.test.js"
+    ],
+    "timeout_s": 600
+  },
+  "source": {
+    "dataset": "ScaleAI/SWE-bench_Pro",
+    "instance_id": "instance_internetarchive__openlibrary-6afdb09df692223c3a31df65cfa92f15e5614c01-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-6afdb09df692223c3a31df65cfa92f15e5614c01-v08d8e8889ec945ab821fb156c04c7"
+  }
+}
