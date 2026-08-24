@@ -263,13 +263,18 @@ no daemon. A Podman implementation would drop in unchanged; it is not written.
 
 ## 6. Known gaps and next steps
 
-**Demonstrated.** A live run against a real `ansible/ansible` instance grades
-`resolved` in 37 turns for $3.00, with the trajectory showing the behaviour that
-matters: tests pass at turn 30, a *wider* selection fails at turn 31, the agent
-writes a diagnostic script rather than editing blindly, re-reads the regions it
-changed, re-runs, and only then calls `done`. All 37 exchanges are committed
-under `artifacts/agent-run/`, so anyone can replay the run with no API key.
-Full record in `artifacts/agent-run/RUN-LOG.md`.
+**Demonstrated, not yet shipped.** A live run against a real
+`ansible/ansible` instance grades `resolved` in 37 turns for $3.00, with the
+trajectory showing the behaviour that matters: tests pass at turn 30, a *wider*
+selection fails at turn 31, the agent writes a diagnostic script rather than
+editing blindly, re-reads the regions it changed, re-runs, and only then calls
+`done`. Its cassettes replay to an identical report with zero API calls.
+
+Those artifacts are deliberately **not** in version control yet. They were
+produced while the harness was still changing, and a recorded trajectory is
+only replayable against the prompt and tool set it was recorded with -- the
+divergence check fails loudly otherwise. The submission run will be recorded
+against the final code and committed then.
 
 Two harness defects surfaced only by spending real money, both since fixed:
 `read_file` never reported a file's size, so on a 2,740-line file the agent

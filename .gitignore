@@ -8,3 +8,6 @@ __pycache__/
 
 .DS_Store
 site/
+
+# Test-run evidence. The submission run gets committed deliberately, later.
+artifacts/agent-run/

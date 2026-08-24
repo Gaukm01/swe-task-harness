@@ -51,17 +51,12 @@ back with no key at all and fails loudly if the prompt or tool set has changed
 since recording — a silently-wrong replay would make every downstream artifact a
 fiction.
 
-A full live run is recorded in **`artifacts/agent-run/`** — a real
-`ansible/ansible` instance graded `resolved` (1/1 fail-to-pass fixed, 0/4
-regressions) in 37 turns for $3.00, with all 37 API exchanges committed as
-cassettes. `RUN-LOG.md` there documents every command, the complete trajectory,
-the computed diff, and the token accounting. Replay it from a clean clone with
-no API key:
-
-```bash
-uv run task run examples/swebench-pro/ansible__ansible-12734fa-f617569fd6889f2211f75bc02a35f9f8 \
-  --solver replay:01M0SVVEQ9RT9YDWCGEY4ADDCF
-```
+> **Status.** A live agent run has been performed and verified end to end
+> against a real `ansible/ansible` instance: graded `resolved` (1/1
+> fail-to-pass fixed, 0/4 regressions) in 37 turns, and its recorded cassettes
+> replay to an identical report with zero API calls. Those artifacts are held
+> outside version control while the code settles; the submission run will be
+> committed deliberately.
 
 ## Inspecting a run
 
