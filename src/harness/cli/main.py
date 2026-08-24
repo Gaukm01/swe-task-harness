@@ -35,6 +35,7 @@ from harness.cli.render import (
     render_error,
     render_invocation,
     render_instance_survey,
+    render_run_log,
     render_run_result,
     render_runs,
     render_site_written,
@@ -55,13 +56,14 @@ from harness.core.checks import Check
 from harness.core.env import MODEL_VAR, load_dotenv
 from harness.core.errors import (
     BaselineValidationError,
+    GradingInconclusiveError,
     ExitCode,
     HarnessError,
     UsageError,
 )
 from harness.core.ids import new_ulid
 from harness.core.phases import BaseResult, Phase, phase_tag, prepare_base, validate_task
-from harness.core.results import Bucket, TestOutcome, TestStatus
+from harness.core.results import Bucket, Outcome, TestOutcome, TestStatus
 from harness.core.run import execute_run
 from harness.report import build_report, render_single_run, render_site, write_report
 from harness.solvers import (
@@ -205,11 +207,11 @@ def show_log(
     else:
         record = store.get_invocation(identifier)
         if record is None:
-            if store.get_run(identifier) is not None:
-                raise UsageError(
-                    f"{identifier} is a run id, not an invocation id.",
-                    fix=f"Try `task report {identifier}` or `task runs`.",
-                )
+            run_row = store.get_run(identifier)
+            if run_row is not None:
+                # The help string promises run ids work, so they work.
+                render_run_log(run_row, store.events_for_run(identifier))
+                return
             raise UsageError(
                 f"No invocation or run with id {identifier!r}.",
                 fix="Use `task log last`, or copy an id from a previous command's output.",
@@ -366,16 +368,6 @@ def run(
         wall_clock_s=float(loaded.spec.tests.timeout_s * 4),
     )
 
-    # Invariant 3: a cached baseline is acceptable only when the bundle digest
-    # *and* the environment cache key both match. Anything else re-validates.
-    cached = (
-        None
-        if no_cache
-        else store.find_validation(
-            bundle_digest=loaded.digest, cache_key=base.cache_key
-        )
-    )
-    cached_baseline = _decode_baseline(cached) if cached else None
 
     runtime = DockerRuntime()
     result = execute_run(
@@ -385,24 +377,8 @@ def run(
         solver_impl,
         run_id=run_id,
         artifact_dir=artifact_dir,
-        cached_baseline=cached_baseline,
     )
 
-    if cached_baseline is None:
-        store.record_validation(
-            bundle_digest=loaded.digest,
-            cache_key=base.cache_key,
-            outcomes=[
-                {
-                    "test_id": o.test_id,
-                    "bucket": o.bucket.value,
-                    "status": o.status.value,
-                    "duration_ms": o.duration_ms,
-                    "message": o.message,
-                }
-                for o in result.baseline
-            ],
-        )
 
     diff_path = artifact_dir / "solution.diff"
     diff_path.parent.mkdir(parents=True, exist_ok=True)
@@ -420,19 +396,18 @@ def run(
     render_site(store, Path("site"))
     render_run_result(result, report_path=report_path)
 
-
-def _decode_baseline(rows: list[dict[str, object]]) -> list[TestOutcome]:
-    """Rebuild baseline outcomes from a cached validation event."""
-    return [
-        TestOutcome(
-            test_id=str(row["test_id"]),
-            bucket=Bucket(str(row["bucket"])),
-            status=TestStatus(str(row["status"])),
-            duration_ms=int(row.get("duration_ms") or 0),
-            message=(str(row["message"]) if row.get("message") else None),
+    if result.outcome is Outcome.INCONCLUSIVE:
+        # Raised only after every artifact is on disk, so the evidence survives.
+        # A caller must be able to tell "the machine failed" from "the solution
+        # failed" by exit code alone; without this, CI treats an infrastructure
+        # failure as a completed zero-progress run.
+        raise GradingInconclusiveError(
+            f"{loaded.spec.task_id}: grading could not reach a verdict.",
+            fix="Some tests timed out or the environment failed. The report is at "
+            f"{report_path}; re-run once the cause is addressed.",
         )
-        for row in rows
-    ]
+
+
 
 
 def _persist_run(store: Store, result: object, started_at: str, report_path: Path, diff_path: Path) -> None:
@@ -721,12 +696,16 @@ def _ensure_base(bundle: Path, *, no_cache: bool = False) -> tuple[Bundle, BaseR
     )
 
     runtime = DockerRuntime()
-    # Resolve the pulled digest first when the environment names an image, so a
-    # republished mutable tag invalidates the cache instead of silently changing
-    # what runs.
-    base_image_digest = (
-        runtime.image_digest(spec.environment.image) if spec.environment.image else None
-    )
+    # Pull BEFORE reading the digest. Reading first meant a cold machine
+    # computed the key with digest=None, tagged the snapshot with it, and then
+    # every later invocation computed a different key and missed its own cache
+    # -- one guaranteed rebuild of a multi-gigabyte image per task, plus an
+    # orphan the gc only reaps days later.
+    base_image_digest = None
+    if spec.environment.image:
+        if not runtime.image_exists(spec.environment.image):
+            runtime.pull(spec.environment.image, platform=spec.environment.platform)
+        base_image_digest = runtime.image_digest(spec.environment.image)
     cache_key = compute_cache_key(spec, bundle, base_image_digest=base_image_digest)
     result = prepare_base(runtime, spec, bundle, cache_key=cache_key, no_cache=no_cache)
 

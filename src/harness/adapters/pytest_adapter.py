@@ -155,7 +155,52 @@ class PytestAdapter:
                     message=case.message,
                 )
             )
-        return outcomes
+        return self._verify_exit_agreement(outcomes, exec_result)
+
+    def _verify_exit_agreement(
+        self, outcomes: list[TestOutcome], exec_result: ExecResult
+    ) -> list[TestOutcome]:
+        """Cross-check the results file against the process exit code.
+
+        The junit file is written inside the container, so code the solver put
+        in an ordinary source file can rewrite it -- an `atexit` hook runs after
+        pytest writes results and before the harness copies them out. The exit
+        code, by contrast, is observed by the Docker daemon from outside.
+
+        pytest exits 0 if and only if every selected test passed. So a junit
+        claiming a clean sweep alongside a non-zero exit is a contradiction that
+        a genuine run cannot produce. Report it as `infra_error` -- the run has
+        told us nothing trustworthy about the solution, which is exactly what
+        `inconclusive` is for. Failing closed here is deliberate: a false
+        `inconclusive` costs a re-run, a false `resolved` corrupts every number
+        the harness publishes.
+
+        This is defense in depth, not a proof. A solver that also forces the
+        exit code (`os._exit(0)`) defeats it -- which is why
+        `core.gaming` flags that shape in the solution diff.
+        """
+        if exec_result.timed_out or not outcomes:
+            return outcomes
+        all_passed = all(o.status is TestStatus.PASSED for o in outcomes)
+        if not all_passed or exec_result.exit_code == EXIT_OK:
+            return outcomes
+
+        note = (
+            f"results file reports every test passing, but the test process exited "
+            f"{exec_result.exit_code}. A genuine pytest run exits 0 when all selected "
+            "tests pass, so the results file and the process disagree; treating this "
+            "as an infrastructure failure rather than a pass."
+        )
+        return [
+            TestOutcome(
+                test_id=o.test_id,
+                bucket=o.bucket,
+                status=TestStatus.INFRA_ERROR,
+                duration_ms=o.duration_ms,
+                message=note,
+            )
+            for o in outcomes
+        ]
 
     # -- how to read an absent result -------------------------------------
 

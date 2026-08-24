@@ -81,7 +81,49 @@ Five mechanisms, each closing a distinct hole:
    repo root — resolving host-side would be checking the wrong filesystem, since
    a symlink means whatever the container says it means.
 
-### An honest limit
+### The results file, and what "cannot be forged" really means
+
+A sixth mechanism exists because the first five were not enough.
+
+The junit file that grading reads is written **inside the container the
+solver's code runs in**. An `atexit` hook in an ordinary source file — no test
+path, no test config, invisible to every path-based check — runs *after* pytest
+writes results and *before* the harness copies them out. Appending fifteen lines
+to `tinylib/__init__.py` once produced `resolved`, zero gaming flags, `f2p_fixed
+2/2`, with the function under test never touched.
+
+Three layers now stand in the way, and none of them is a proof:
+
+1. **The path is unguessable.** Results go to a per-run, dot-prefixed directory
+   outside the repo and outside `/tmp`. `glob("/tmp/**/*junit*.xml")` finds
+   nothing, and Python's `glob` does not descend into dot-directories at all.
+2. **The verdict is cross-checked against the exit code.** pytest exits 0 if and
+   only if every selected test passed, and the exit code is observed by the
+   Docker daemon, outside the container. A file claiming a clean sweep beside a
+   non-zero exit is a contradiction no real run produces, and is reported as
+   `infra_error` → `inconclusive`. Failing closed is deliberate: a false
+   `inconclusive` costs a re-run, a false `resolved` corrupts every number.
+3. **The shapes such tampering needs are flagged.** `atexit`, `os._exit`,
+   `sitecustomize`, `pytest_sessionfinish`, references to `junit` — matched
+   against the *added* lines of the solution diff only.
+
+Measured against the actual attack:
+
+| attack | outcome |
+|---|---|
+| forge junit, naive `/tmp` glob | `unresolved` + 2 flags |
+| forge junit, scan whole filesystem | times out → `inconclusive` + flags |
+| forge junit, target the real directory | `unresolved` + flags (dot-dir) |
+| forge junit, locate it correctly | `inconclusive` — exit code disagrees |
+| forge junit **and** force `os._exit(0)` | `resolved_suspect` + flags |
+
+**The guarantee is therefore precise and worth stating exactly: a solver cannot
+produce a *silent* pass.** It can, by defeating all three layers, reach
+`resolved_suspect` — flagged, visibly. It cannot reach `resolved`. Anyone
+running arbitrary code alongside the tests inherits this class of problem; the
+harness makes the cheap version fail and the expensive version conspicuous.
+
+### Two further honest limits
 
 Force-restore covers `test_path_globs` plus files that *only* configure the test
 runner: `conftest.py`, `pytest.ini`, `jest.config.*`. It deliberately does **not**
@@ -89,6 +131,13 @@ restore `pyproject.toml`, `setup.cfg`, or `package.json`, which carry pytest
 configuration *and* real dependency and packaging changes an honest fix may
 need. Reverting those would break legitimate solutions in order to defend
 against illegitimate ones.
+
+And the globs can be *too broad*. An importer fallback of `test/**` covers
+`test/lib/ansible_test/**`, which in ansible is shipped product source. A
+correct fix there would be reverted by force-restore and then flagged as
+cheating — a false negative dressed as an accusation. The run now emits an
+explicit note when force-restore reverts a path the solution modified, so that
+case is visible rather than inferred from a suspicious test count.
 
 So a solver can still put `[tool.pytest.ini_options] addopts = ...` in
 `pyproject.toml` and have it survive grading. It gets a gaming flag, so the run
@@ -120,8 +169,18 @@ correct about DNS, TLS interception, redirects, and every SDK retry path, and it
 fails open — a hole in the allowlist is a hole in the grading signal, silently.
 `--network=none` fails closed and has no configuration to get wrong.
 
-The container also runs non-root-capable with `--pids-limit`, memory and CPU
-caps, no docker socket, and a wall-clock timeout on every exec.
+The container also runs with `--cap-drop=ALL`,
+`--security-opt=no-new-privileges`, `--pids-limit`, memory and CPU caps, no
+docker socket, and a wall-clock timeout on every exec. Verified from inside:
+`CapEff: 0000000000000000`, `NoNewPrivs: 1`.
+
+Precisely on privileges: the process keeps whatever uid the image specifies —
+usually **root** — but holds no capabilities and cannot regain any. It is not
+run as an unprivileged user, because SWE-bench instance images install and build
+as root and would break; `ContainerSpec.hardened(user=...)` is available
+per-bundle for images that tolerate it. Root-with-no-capabilities inside a
+network-isolated, disposable container is the tradeoff, and saying so exactly
+beats implying the container is unprivileged.
 
 **What it costs.** Every tool call pays `docker exec` startup, roughly 50ms.
 Irrelevant at agent-loop timescales.
@@ -254,3 +313,11 @@ useful than one that says where the edges actually are.
 | The replay fingerprint compared tool-result content, which contains pytest durations and diverges every time | replaying against a real container |
 | SWE-Bench Pro's prose fields are JSON-encoded; `description.md` was one unreadable line | reading the imported bundle |
 | `restored_test_paths` enumerated ~10k ansible files, making the committed artifact 272KB | looking at the artifact |
+| One unimportable test file made the *entire* suite report `not_found`, because pytest resolves all selectors before running any | preparing a second real instance |
+| **A solver could forge the junit file and grade `resolved` with no flags** | an external review, then reproduced |
+| `recipe` and `repo` were accepted by lint and never executed | an external review |
+| Exit code 6 was advertised and never raised; inconclusive runs exited 0 | an external review |
+| A binary file in the solve tree failed `git apply` and killed the run as "baseline invalid" | an external review |
+| The BASE "repo present" guard could never fire, because Docker creates a missing `--workdir` | an external review |
+| The cache key was computed before the image was pulled, so the first run always missed its own cache | an external review |
+| A model emitting `"start_line": "abc"` crashed the whole run | an external review |

@@ -274,3 +274,52 @@ def test_a_selector_in_a_healthy_file_is_still_not_found(tmp_path):
         requested={"test/units/other.py::test_c": Bucket.P2P},
     )
     assert outcomes[0].status is TestStatus.NOT_FOUND
+
+
+# -- results file vs. process exit code -----------------------------------
+
+
+def test_a_forged_clean_sweep_is_caught_by_the_exit_code(tmp_path):
+    """junit says everything passed; pytest exited 1. That cannot both be true.
+
+    The results file is written inside the container and is rewritable by code
+    the solver put in an ordinary source file. The exit code is observed by the
+    Docker daemon from outside. When they disagree, the run has told us nothing
+    trustworthy -- which is what `infra_error`/`inconclusive` is for.
+    """
+    outcomes = adapter.parse(
+        junit_path=_write(tmp_path, PASSING),
+        exec_result=_exec(exit_code=1),
+        requested={"tests/test_x.py::test_a": Bucket.F2P, "tests/test_x.py::test_b": Bucket.P2P},
+    )
+    assert [o.status for o in outcomes] == [TestStatus.INFRA_ERROR] * 2
+    assert "disagree" in outcomes[0].message
+
+
+def test_a_genuine_clean_sweep_is_not_flagged(tmp_path):
+    # Failing closed is only acceptable if it does not fire on honest runs.
+    outcomes = adapter.parse(
+        junit_path=_write(tmp_path, PASSING),
+        exec_result=_exec(exit_code=0),
+        requested={"tests/test_x.py::test_a": Bucket.F2P},
+    )
+    assert outcomes[0].status is TestStatus.PASSED
+
+
+def test_a_genuine_failure_is_not_flagged(tmp_path):
+    # Mixed results with a non-zero exit is the normal GUARDED shape.
+    outcomes = adapter.parse(
+        junit_path=_write(tmp_path, MIXED),
+        exec_result=_exec(exit_code=1),
+        requested={"tests/test_x.py::test_fail": Bucket.F2P},
+    )
+    assert outcomes[0].status is TestStatus.FAILED
+
+
+def test_a_timeout_is_not_mistaken_for_tampering(tmp_path):
+    outcomes = adapter.parse(
+        junit_path=_write(tmp_path, PASSING),
+        exec_result=_exec(exit_code=-1, timed_out=True),
+        requested={"tests/test_x.py::test_a": Bucket.F2P},
+    )
+    assert outcomes[0].status is TestStatus.TIMEOUT

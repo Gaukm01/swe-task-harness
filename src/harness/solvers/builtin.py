@@ -63,6 +63,16 @@ class NoopSolver:
         return SolverResult(kind=self.kind, summary="made no changes")
 
 
+# Enough to diagnose, not enough to bury a report.
+MAX_NOTE_CHARS = 2000
+
+
+def _clip(text: str) -> str:
+    if len(text) <= MAX_NOTE_CHARS:
+        return text
+    return text[:MAX_NOTE_CHARS] + f"... [{len(text) - MAX_NOTE_CHARS} more chars]"
+
+
 class CmdSolver:
     """Runs an arbitrary command inside the solve container as the solver.
 
@@ -90,6 +100,14 @@ class CmdSolver:
             notes.append(f"command timed out after {context.timeout_s}s")
         elif not result.ok:
             notes.append(f"command exited {result.exit_code}")
-        return SolverResult(
-            kind=self.kind, summary=f"ran: {self.command}", notes=notes
-        )
+
+        # Keep the output. This is the solver most likely to be an external or
+        # stub implementation wired in from outside, which makes it the one
+        # where discarding stdout/stderr costs the most -- an exit code alone
+        # tells you something went wrong but never what.
+        for stream, text in (("stdout", result.stdout), ("stderr", result.stderr)):
+            trimmed = text.strip()
+            if trimmed:
+                notes.append(f"{stream}: {_clip(trimmed)}")
+
+        return SolverResult(kind=self.kind, summary=f"ran: {self.command}", notes=notes)

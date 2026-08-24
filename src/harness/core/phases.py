@@ -31,7 +31,7 @@ from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.runtime import ContainerRuntime, ContainerSpec, ExecResult
 from harness.core.gaming import is_test_infrastructure
 from harness.core.globs import matches_any
-from harness.core.testrun import CONTAINER_ARTIFACT_DIR, TestRun, run_selectors
+from harness.core.testrun import CONTAINER_SCRATCH_DIR, TestRun, run_selectors
 from harness.solvers.base import Solver, SolverContext, SolverResult
 
 # Where the harness expects a repo to live. An image that ships the code
@@ -185,6 +185,66 @@ def resolve_base_image(
     if no_cache or not runtime.image_exists(recipe.base_image):
         runtime.pull(recipe.base_image, platform=environment.platform)
     return recipe.base_image
+
+
+def clone_repo_if_needed(
+    runtime: ContainerRuntime,
+    container_id: str,
+    spec: TaskSpec,
+    steps: list[StepLog],
+) -> None:
+    """Clone the repo when the image does not already ship it.
+
+    `environment.repo_path_in_image` set means the image carries the code and
+    nothing is cloned. Otherwise `repo` is cloned to the default root. BASE
+    preparation is the only phase permitted network access -- it runs before
+    any solver exists, and the history it fetches is truncated moments later.
+    """
+    if spec.environment.repo_path_in_image or not spec.repo:
+        return
+
+    root = repo_root(spec)
+    parent = root.rsplit("/", 1)[0] or "/"
+    _record(steps, "make repo parent", runtime.exec(container_id, ["mkdir", "-p", parent]))
+    _require(
+        _record(
+            steps,
+            f"clone {spec.repo}",
+            runtime.exec(container_id, ["git", "clone", "--quiet", spec.repo, root], timeout_s=1800),
+        ),
+        f"cloning {spec.repo}",
+        fix="Check the repo URL, that git is installed in the base image "
+        "(add it to recipe.install_cmds), and that the host has network access.",
+    )
+
+
+def run_install_cmds(
+    runtime: ContainerRuntime,
+    container_id: str,
+    spec: TaskSpec,
+    steps: list[StepLog],
+) -> None:
+    """Run a recipe's install commands inside the container.
+
+    Each command is passed as a single argv element to `bash -lc`, exactly as
+    the agent's `run_bash` tool is: the host shell never sees it. These strings
+    come from the bundle, which is trusted input -- the threat model defends
+    against the solver, not the task author.
+    """
+    recipe = spec.environment.recipe
+    if recipe is None:
+        return
+    for index, command in enumerate(recipe.install_cmds):
+        _require(
+            _record(
+                steps,
+                f"install [{index + 1}/{len(recipe.install_cmds)}]",
+                # No workdir: the repo does not exist yet at this point.
+                runtime.exec(container_id, ["bash", "-lc", command], timeout_s=3600),
+            ),
+            f"install command {index + 1} ({command[:60]})",
+            fix="Run it by hand in the base image to see the full output.",
+        )
 
 
 def _git(root: str, *args: str) -> list[str]:
@@ -345,15 +405,29 @@ def prepare_base(
         ContainerSpec(
             image=source_image,
             platform=spec.environment.platform,
-            workdir=root,
         )
     )
     try:
-        probe = _record(steps, "repo present", runtime.exec(container_id, ["test", "-d", root]))
-        if not probe.ok:
+        # Install first, then clone: a recipe's whole purpose is turning a bare
+        # base image into a working environment, and you cannot `git clone`
+        # without git. Post-clone setup (`pip install -e .`) belongs in a
+        # Dockerfile, which runs with the source already present.
+        run_install_cmds(runtime, container_id, spec, steps)
+        clone_repo_if_needed(runtime, container_id, spec, steps)
+
+        # `ls -A`, not `test -d`, and the container is created with NO workdir.
+        # Docker *creates* a missing --workdir, so a container started with
+        # --workdir <root> always has <root> and this guard could never fire; a
+        # misconfigured repo path then surfaced as a confusing git failure
+        # several steps later instead of the clear error below. `ls -A` exits
+        # non-zero when the path is missing and prints nothing when it is empty,
+        # covering both cases with no shell.
+        probe = _record(steps, "repo present", runtime.exec(container_id, ["ls", "-A", "--", root]))
+        if not probe.ok or not probe.stdout.strip():
             raise PhaseError(
                 f"no repo at {root} inside {source_image}.",
                 fix="Set environment.repo_path_in_image to where the image keeps the repo, "
+                "or set `repo` so the harness clones it, "
                 f"or have the image place it at {DEFAULT_REPO_ROOT}.",
             )
 
@@ -433,8 +507,8 @@ def apply_patch(
     be sure none of it is reinterpreted is for it never to touch a shell.
     """
     root = repo_root(spec)
-    remote_path = f"{CONTAINER_ARTIFACT_DIR}/{label}.diff"
-    runtime.exec(container_id, ["mkdir", "-p", CONTAINER_ARTIFACT_DIR])
+    remote_path = f"{CONTAINER_SCRATCH_DIR}/{label}.diff"
+    runtime.exec(container_id, ["mkdir", "-p", CONTAINER_SCRATCH_DIR])
     runtime.write_file(container_id, remote_path, patch_text)
 
     result = _record(
@@ -540,6 +614,7 @@ def validate_task(
     validation_id: str,
     artifact_dir: Path,
     keep_snapshots: bool = False,
+    artifact_nonce: str | None = None,
 ) -> ValidationResult:
     """Run the validate lane: BASE -> GUARDED -> GOLD.
 
@@ -571,6 +646,7 @@ def validate_task(
             label="guarded",
             workdir=root,
             artifact_dir=artifact_dir,
+            artifact_nonce=artifact_nonce,
         )
         guarded_image = runtime.commit(
             container_id, phase_tag(spec.task_id, validation_id, Phase.GUARDED)
@@ -592,6 +668,7 @@ def validate_task(
             label="gold",
             workdir=root,
             artifact_dir=artifact_dir,
+            artifact_nonce=artifact_nonce,
         )
         gold_image = runtime.commit(
             container_id, phase_tag(spec.task_id, validation_id, Phase.GOLD)
@@ -657,7 +734,10 @@ def compute_solution_diff(
         _record(
             steps,
             "compute solution.diff",
-            runtime.exec(container_id, _git(root, "diff", "--cached", "HEAD")),
+            # --binary: without it a solver that creates any binary file yields
+            # "Binary files differ", which `git apply` then refuses -- losing the
+            # entire run over a file the harness itself failed to encode.
+            runtime.exec(container_id, _git(root, "diff", "--cached", "--binary", "HEAD")),
         ),
         "computing the solution diff",
         fix="The repo inside the solve container is not a usable git repo.",
@@ -786,6 +866,23 @@ def force_restore_tests(
     return sorted({*tracked_tests, *added_tests})
 
 
+def _infra_run(spec: TaskSpec, reason: str) -> TestRun:
+    """A post-run in which nothing could be measured. Grades `inconclusive`."""
+    from harness.core.testrun import requested_map
+
+    return TestRun(
+        label="post",
+        outcomes=[
+            TestOutcome(test_id=selector, bucket=bucket, status=TestStatus.INFRA_ERROR,
+                        message=reason)
+            for selector, bucket in requested_map(spec).items()
+        ],
+        exec_result=ExecResult(argv=[], exit_code=-1, stdout="", stderr=reason, duration_ms=0),
+        junit_path=None,
+        argv=[],
+    )
+
+
 def grade_solution(
     runtime: ContainerRuntime,
     bundle: Bundle,
@@ -795,6 +892,7 @@ def grade_solution(
     run_id: str,
     artifact_dir: Path,
     keep_snapshot: bool = True,
+    artifact_nonce: str | None = None,
 ) -> tuple[TestRun, list[str], str]:
     """The SCORED phase. Returns the test run, the restored paths, and the image.
 
@@ -822,14 +920,26 @@ def grade_solution(
     )
     try:
         if solution_diff.strip():
-            apply_patch(
-                runtime,
-                container_id,
-                spec,
-                patch_text=solution_diff,
-                label="solution",
-                steps=steps,
-            )
+            try:
+                apply_patch(
+                    runtime,
+                    container_id,
+                    spec,
+                    patch_text=solution_diff,
+                    label="solution",
+                    steps=steps,
+                )
+            except PhaseError as error:
+                # The baseline validated moments ago, so this is not a bad
+                # bundle -- it is the harness failing to re-apply a diff it
+                # computed itself (a binary file, a path the test patch also
+                # creates). Blaming the task would be wrong and would discard
+                # the run; report it as infrastructure and let grading finish.
+                return (
+                    _infra_run(spec, f"the solution diff could not be applied: {error.message}"),
+                    [],
+                    "",
+                )
         restored = force_restore_tests(runtime, container_id, spec, steps)
         apply_patch(
             runtime,
@@ -846,6 +956,7 @@ def grade_solution(
             label="post",
             workdir=root,
             artifact_dir=artifact_dir,
+            artifact_nonce=artifact_nonce,
         )
         image = runtime.commit(container_id, phase_tag(spec.task_id, run_id, Phase.SCORED))
     finally:

@@ -175,7 +175,22 @@ class FakeRuntime:
                 duration_ms=scripted.duration_ms,
                 timed_out=scripted.timed_out,
             )
-        return ExecResult(argv=argv, exit_code=0, stdout="", stderr="", duration_ms=1)
+        return ExecResult(
+            argv=argv, exit_code=0, stdout=self._default_stdout(argv), stderr="", duration_ms=1
+        )
+
+    def _default_stdout(self, argv: list[str]) -> str:
+        """What an unscripted command prints.
+
+        The fake models a *healthy* container: one whose image actually
+        contains a repo. So a directory listing comes back non-empty, and a
+        test that wants to model a missing or empty repo scripts that
+        explicitly. The alternative -- an empty default -- meant every test
+        silently modelled a broken image.
+        """
+        if argv and argv[0] == "ls":
+            return "src\ntests\nREADME.md\n"
+        return ""
 
     def commit(self, container_id: str, tag: str) -> str:
         self.commits.append((container_id, tag))

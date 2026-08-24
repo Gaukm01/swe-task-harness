@@ -171,7 +171,16 @@ def test_the_synthetic_commit_is_deterministic(spec, tiny_fixture, key):
 
 def test_a_missing_repo_is_a_clear_error(spec, tiny_fixture, key):
     runtime = FakeRuntime()
-    runtime.script(argv_contains("test", "-d"), exit_code=1)
+    runtime.script(argv_contains("ls", "-A"), exit_code=1, stderr="No such file")
+    with pytest.raises(PhaseError, match="no repo at /workspace/repo"):
+        run_base(runtime, spec, tiny_fixture, key)
+
+
+def test_an_empty_repo_directory_is_also_caught(spec, tiny_fixture, key):
+    # Docker creates a missing --workdir, so "the directory exists" proves
+    # nothing. This is the case the old `test -d` probe could never fail on.
+    runtime = FakeRuntime()
+    runtime.script(argv_contains("ls", "-A"), exit_code=0, stdout="")
     with pytest.raises(PhaseError, match="no repo at /workspace/repo"):
         run_base(runtime, spec, tiny_fixture, key)
 
@@ -268,16 +277,29 @@ def bundle(tiny_fixture):
     return _load_bundle(tiny_fixture)
 
 
+# Results now live in a per-run unguessable directory; tests pin the nonce so
+# the scripted payloads land where the code will look for them.
+NONCE = "testnonce"
+
+
 def wire_validation(runtime, bundle, *, guarded_junit: str, gold_junit: str):
     """Make copy_out hand back scripted junit for each phase."""
-    runtime.copy_out_payloads["/tmp/harness/guarded-junit.xml"] = guarded_junit
-    runtime.copy_out_payloads["/tmp/harness/gold-junit.xml"] = gold_junit
+    from harness.core.testrun import new_artifact_dir
+
+    where = new_artifact_dir(NONCE)
+    runtime.copy_out_payloads[f"{where}/guarded-junit.xml"] = guarded_junit
+    runtime.copy_out_payloads[f"{where}/gold-junit.xml"] = gold_junit
 
 
 def run_validation(runtime, bundle, tiny_fixture, tmp_path, key):
     base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
     return validate_task(
-        runtime, bundle, base, validation_id="01VALIDATE", artifact_dir=tmp_path / "artifacts"
+        runtime,
+        bundle,
+        base,
+        validation_id="01VALIDATE",
+        artifact_dir=tmp_path / "artifacts",
+        artifact_nonce=NONCE,
     )
 
 
@@ -517,6 +539,7 @@ def test_keep_snapshots_overrides_the_discard(bundle, tiny_fixture, tmp_path, ke
         validation_id="01KEEP",
         artifact_dir=tmp_path / "a",
         keep_snapshots=True,
+        artifact_nonce=NONCE,
     )
     assert result.ok
     assert result.guarded.retained
@@ -554,3 +577,51 @@ def test_selectors_are_grouped_by_file(bundle, tiny_fixture, tmp_path, key):
     # Two files, two invocations.
     assert sum(1 for a in runtime.exec_argvs() if "pytest" in a) == 2
     assert {o.test_id for o in run.outcomes} == {"one.py::a", "two.py::b"}
+
+
+# -- recipe and clone environments ----------------------------------------
+
+
+def test_a_recipe_runs_its_install_commands(spec, tiny_fixture, key):
+    # These were previously accepted by lint and then silently never executed.
+    runtime = FakeRuntime()
+    recipe_spec = spec.model_copy(deep=True)
+    recipe_spec.environment.dockerfile = None
+    recipe_spec.environment.recipe = type(recipe_spec.environment).model_fields[
+        "recipe"
+    ].annotation.__args__[0](base_image="python:3.11-slim", install_cmds=["pip install pytest"])
+    run_base(runtime, recipe_spec, tiny_fixture, key)
+    assert runtime.ran("pip install pytest")
+
+
+def test_a_repo_url_is_cloned_when_the_image_does_not_ship_one(spec, tiny_fixture, key):
+    runtime = FakeRuntime()
+    cloned = spec.model_copy(deep=True)
+    cloned.repo = "https://example.com/x.git"
+    cloned.base_commit = "a" * 40
+    cloned.environment.repo_path_in_image = None
+    run_base(runtime, cloned, tiny_fixture, key)
+    assert runtime.ran("git", "clone", "https://example.com/x.git")
+    # Cloning must precede the checkout that pins the commit.
+    assert runtime.index_of("clone") < runtime.index_of("checkout", "--detach")
+
+
+def test_install_commands_run_before_the_clone(spec, tiny_fixture, key):
+    # You cannot `git clone` without git, and a bare base image has none.
+    runtime = FakeRuntime()
+    combined = spec.model_copy(deep=True)
+    combined.repo = "https://example.com/x.git"
+    combined.base_commit = "a" * 40
+    combined.environment.repo_path_in_image = None
+    combined.environment.dockerfile = None
+    combined.environment.recipe = type(combined.environment).model_fields[
+        "recipe"
+    ].annotation.__args__[0](base_image="python:3.11-slim", install_cmds=["apt-get install git"])
+    run_base(runtime, combined, tiny_fixture, key)
+    assert runtime.index_of("apt-get install git") < runtime.index_of("clone")
+
+
+def test_nothing_is_cloned_when_the_image_ships_the_repo(spec, tiny_fixture, key):
+    runtime = FakeRuntime()
+    run_base(runtime, spec, tiny_fixture, key)
+    assert not runtime.ran("git", "clone")

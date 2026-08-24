@@ -13,15 +13,36 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import secrets
+
 from harness.adapters import get_adapter
 from harness.core.bundle import TaskSpec
 from harness.core.results import Bucket, TestOutcome
 from harness.core.runtime import ContainerRuntime, ExecResult
 
 # Inside the container, junit files go somewhere the repo tree never sees, so a
-# `git add -A` for the solution diff cannot sweep them up and so a solver
-# poking around the repo never finds one to forge.
-CONTAINER_ARTIFACT_DIR = "/tmp/harness"
+# `git add -A` for the solution diff cannot sweep them up.
+#
+# The directory name carries a per-run random nonce and sits OUTSIDE /tmp. A
+# fixed path like /tmp/harness was trivially discoverable -- a solver could find
+# it with `glob("/tmp/**/*junit*.xml")` and rewrite the file from an atexit hook
+# registered in an ordinary source file, which runs after pytest writes the
+# results and before the harness copies them out. That produced a `resolved`
+# verdict from a solver that changed nothing. See `verify_exit_agreement` for
+# the cross-check that backs this up, and DESIGN.md for the residual risk.
+CONTAINER_ARTIFACT_ROOT = "/var/opt"
+
+# Where patches are staged before `git apply`. Unlike results, patches are
+# *inputs*: a solver reading one gains nothing, because by the time any patch
+# is staged its own diff is already computed and immutable. A fixed path is
+# fine here, and keeping it out of the repo is what actually matters -- a
+# `git add -A` must not sweep it into solution.diff.
+CONTAINER_SCRATCH_DIR = "/tmp/harness"
+
+
+def new_artifact_dir(nonce: str | None = None) -> str:
+    """A fresh, unguessable in-container directory for grading artifacts."""
+    return f"{CONTAINER_ARTIFACT_ROOT}/.hz-{nonce or secrets.token_hex(12)}"
 
 
 @dataclass
@@ -64,6 +85,7 @@ def run_selectors(
     workdir: str,
     artifact_dir: Path,
     selectors: dict[str, Bucket] | None = None,
+    artifact_nonce: str | None = None,
 ) -> TestRun:
     """Run the guardrail selectors and classify every one of them.
 
@@ -86,8 +108,9 @@ def run_selectors(
     requested = selectors if selectors is not None else requested_map(spec)
     groups = group_by_file(requested)
 
+    container_dir = new_artifact_dir(artifact_nonce)
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    runtime.exec(container_id, ["mkdir", "-p", CONTAINER_ARTIFACT_DIR])
+    runtime.exec(container_id, ["mkdir", "-p", container_dir])
 
     outcomes: list[TestOutcome] = []
     stdout_parts: list[str] = []
@@ -98,7 +121,7 @@ def run_selectors(
 
     for index, group in enumerate(groups.values()):
         suffix = label if len(groups) == 1 else f"{label}-{index}"
-        container_junit = f"{CONTAINER_ARTIFACT_DIR}/{suffix}-junit.xml"
+        container_junit = f"{container_dir}/{suffix}-junit.xml"
         argv = adapter.run_argv(spec.tests.run_cmd_template, list(group), container_junit)
         last_argv = argv
 

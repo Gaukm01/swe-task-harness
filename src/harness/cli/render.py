@@ -402,7 +402,9 @@ def render_runs(rows: Sequence[sqlite3.Row]) -> None:
         return
 
     table = Table(title="runs", title_justify="left", header_style="bold")
-    table.add_column("run")
+    # no_wrap: a truncated ULID cannot be pasted into `task report`, which
+    # makes the column worse than useless.
+    table.add_column("run", no_wrap=True)
     table.add_column("task")
     table.add_column("solver")
     table.add_column("outcome")
@@ -443,3 +445,34 @@ def render_site_written(written: Sequence[Path], destination: Path) -> None:
         Text(f"wrote {runs} run page{'' if runs == 1 else 's'} + index", style="bold green")
     )
     console.print(Text(f"  open {destination / 'index.html'}", style="dim"))
+
+
+def render_run_log(record: sqlite3.Row, events: Sequence[sqlite3.Row] = ()) -> None:
+    """Render one stored run and its events."""
+    outcome = record["outcome"]
+    table = Table(title=f"run {record['run_id']}", title_justify="left", show_header=False)
+    table.add_column("field", style="bold", no_wrap=True)
+    table.add_column("value", overflow="fold")
+    table.add_row("task", record["task_id"])
+    table.add_row("solver", record["solver_kind"])
+    table.add_row(
+        "outcome",
+        Text(outcome or "incomplete", style=_OUTCOME_STYLE.get(Outcome(outcome), "dim"))
+        if outcome
+        else Text("incomplete", style="dim"),
+    )
+    table.add_row("phase reached", record["phase_reached"])
+    table.add_row("started", record["started_at"] or "-")
+    table.add_row("ended", record["ended_at"] or "-")
+    console.print(table)
+
+    if not events:
+        return
+    console.print()
+    event_table = Table(title="events", title_justify="left", header_style="bold")
+    event_table.add_column("seq", justify="right")
+    event_table.add_column("kind", style="bold")
+    event_table.add_column("payload", overflow="fold")
+    for event in events:
+        event_table.add_row(str(event["seq"]), event["kind"], event["payload"][:300])
+    console.print(event_table)

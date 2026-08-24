@@ -212,7 +212,20 @@ class ToolBox:
                 is_error=True,
             )
         else:
-            record = handler(arguments)
+            try:
+                record = handler(arguments)
+            except Exception as error:  # noqa: BLE001 - model input is untrusted
+                # Tool arguments come from a model and can be any shape at all.
+                # A malformed one must cost a single turn and be reported back
+                # so the model can correct itself -- never propagate out and
+                # kill a run whose container is about to be torn down, losing
+                # the diff and the report with it.
+                record = ToolCallRecord(
+                    name=name,
+                    arguments=arguments,
+                    result=f"{type(error).__name__}: {error}. Check the argument types.",
+                    is_error=True,
+                )
         self.calls.append(record)
         return record
 
@@ -234,8 +247,9 @@ class ToolBox:
             )
 
         lines = result.stdout.splitlines()
-        start = max(1, int(arguments.get("start_line") or 1))
-        end = int(arguments.get("end_line") or len(lines))
+        # Models routinely emit stringified numbers; coerce rather than crash.
+        start = max(1, _as_int(arguments.get("start_line"), 1))
+        end = _as_int(arguments.get("end_line"), len(lines))
         window = lines[start - 1 : end]
         numbered = "\n".join(f"{start + i:6d}  {line}" for i, line in enumerate(window))
         return ToolCallRecord("read_file", arguments, _truncate(numbered, MAX_READ_BYTES))
@@ -365,6 +379,19 @@ class ToolBox:
         return selector.strip() in set(self.spec.tests.selectors)
 
 
+def _as_int(value: object, default: int) -> int:
+    """Coerce a model-supplied number, falling back rather than raising."""
+    if value is None or value == "":
+        return default
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        try:
+            return int(float(str(value).strip()))
+        except (TypeError, ValueError):
+            return default
+
+
 def _truncate(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
@@ -393,9 +420,7 @@ def event_payload(record: ToolCallRecord) -> dict[str, Any]:
     """A compact, storable view of one tool call."""
     return {
         "tool": record.name,
-        "arguments": json.loads(json.dumps(record.arguments, default=str))[:1]
-        if isinstance(record.arguments, list)
-        else _shrink(record.arguments),
+        "arguments": _shrink(record.arguments),
         "result": _truncate(record.result, 2000),
         "is_error": record.is_error,
         "refused": record.refused,

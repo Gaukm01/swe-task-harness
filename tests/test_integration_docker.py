@@ -141,3 +141,96 @@ def test_junit_artifacts_are_kept(validated):
     _, artifacts = validated
     assert (artifacts / "guarded-junit.xml").is_file()
     assert (artifacts / "gold-junit.xml").is_file()
+
+
+# ---------------------------------------------------------------------------
+# The run lane end to end. README calls gold/noop "the harness's own regression
+# suite"; before this they were enforced only by hand and against FakeRuntime.
+# ---------------------------------------------------------------------------
+
+
+def _run(runtime, bundle_dir, solver_spec, tmp_path):
+    from harness.core.bundle import load_bundle as _load
+    from harness.core.cache import compute_cache_key
+    from harness.core.ids import new_ulid
+    from harness.core.phases import Phase, phase_tag, prepare_base
+    from harness.core.run import execute_run
+    from harness.solvers import resolve_solver
+
+    bundle = _load(bundle_dir)
+    key = compute_cache_key(bundle.spec, bundle_dir)
+    base = prepare_base(runtime, bundle.spec, bundle_dir, cache_key=key)
+    run_id = new_ulid()
+    try:
+        return execute_run(
+            runtime,
+            bundle,
+            base,
+            resolve_solver(solver_spec),
+            run_id=run_id,
+            artifact_dir=tmp_path / run_id,
+            keep_snapshots=False,
+        )
+    finally:
+        for phase in (Phase.GUARDED, Phase.GOLD, Phase.SOLVE, Phase.SCORED):
+            runtime.remove_image(phase_tag(bundle.spec.task_id, run_id, phase), force=True)
+
+
+def test_gold_resolves_end_to_end(runtime, request, tmp_path):
+    from harness.core.results import Outcome
+
+    result = _run(runtime, request.config.rootpath / "examples/tiny-fixture", "gold", tmp_path)
+    assert result.outcome is Outcome.RESOLVED
+    assert result.gaming_flags == []
+
+
+def test_noop_is_unresolved_end_to_end(runtime, request, tmp_path):
+    from harness.core.results import Bucket, Outcome, Transition
+
+    result = _run(runtime, request.config.rootpath / "examples/tiny-fixture", "noop", tmp_path)
+    assert result.outcome is Outcome.UNRESOLVED
+    assert all(
+        t.transition is Transition.STILL_FAILING
+        for t in result.transitions
+        if t.bucket is Bucket.F2P
+    )
+
+
+def test_a_solver_cannot_forge_the_results_file(runtime, request, tmp_path):
+    """The attack that once produced a false `resolved`.
+
+    An `atexit` hook in an ordinary source file — no test path, no test config —
+    rewrites the junit after pytest writes it and before the harness reads it.
+    It once graded `resolved` with zero flags while `merge()` was never touched.
+
+    The bar is not that the attack fails; it is that it can never yield a
+    *silent* pass. Any of unresolved / inconclusive / resolved_suspect is
+    acceptable; `resolved` with no flags is not.
+    """
+    import base64
+
+    from harness.core.results import Outcome
+
+    forge = (
+        "\nimport atexit as _ae, glob as _g\n"
+        "def _forge():\n"
+        "    for _p in _g.glob('/var/opt/.*/*junit*.xml'):\n"
+        "        open(_p, 'w').write('<testsuite name=\"pytest\" tests=\"0\"/>')\n"
+        "_ae.register(_forge)\n"
+    )
+    # base64 so the payload survives the trip through `bash -lc` unmangled;
+    # nested quoting silently corrupted an earlier version of this test.
+    encoded = base64.b64encode(forge.encode()).decode()
+    solver = (
+        "cmd:python -c "
+        "'import base64,pathlib;"
+        "p=pathlib.Path(\"tinylib/__init__.py\");"
+        f'p.write_text(p.read_text()+base64.b64decode("{encoded}").decode())\''
+    )
+
+    result = _run(runtime, request.config.rootpath / "examples/tiny-fixture", solver, tmp_path)
+
+    assert result.solution_diff.strip(), "the attack payload never landed"
+    assert "atexit" in result.solution_diff
+    assert result.outcome is not Outcome.RESOLVED, "results forgery produced a silent pass"
+    assert result.gaming_flags, "results forgery was invisible"

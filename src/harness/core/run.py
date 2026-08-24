@@ -17,6 +17,7 @@ from pathlib import Path
 
 from harness.core.bundle import Bundle
 from harness.core.errors import BaselineValidationError
+from harness.core.diffs import touched_paths
 from harness.core.gaming import detect_gaming_flags
 from harness.core.phases import (
     BaseResult,
@@ -113,15 +114,18 @@ def execute_run(
     *,
     run_id: str,
     artifact_dir: Path,
-    cached_baseline: list[TestOutcome] | None = None,
     keep_snapshots: bool = True,
+    artifact_nonce: str | None = None,
 ) -> RunResult:
     """Validate the baseline, run the solver, grade the result.
 
-    `cached_baseline` lets a previously-validated (bundle, environment) pair
-    skip re-running the guardrails. The cache key is checked by the caller;
-    what matters here is that a run without a verified baseline is impossible
-    to express -- there is no parameter that turns validation off.
+    The baseline is always the one measured *in this run*. An earlier version
+    accepted a cached baseline keyed on (bundle_digest, cache_key), but since
+    validation runs unconditionally anyway, that only substituted older
+    statuses into the comparison -- letting the report disagree with the run
+    that produced it, for no saved work. A run without a verified baseline
+    remains impossible to express: there is no parameter that turns validation
+    off.
     """
     clock = _Clock()
     timings = Timings(setup=clock.lap())
@@ -133,6 +137,7 @@ def execute_run(
         validation_id=run_id,
         artifact_dir=artifact_dir / "pre",
         keep_snapshots=keep_snapshots,
+        artifact_nonce=artifact_nonce,
     )
     timings.validate = clock.lap()
 
@@ -145,7 +150,7 @@ def execute_run(
             f"Artifacts are in {artifact_dir / 'pre'}.",
         )
 
-    baseline = cached_baseline if cached_baseline is not None else validation.guarded.outcomes
+    baseline = validation.guarded.outcomes
 
     solve = run_solver(
         runtime, bundle, base, solver, run_id=run_id, keep_snapshot=keep_snapshots
@@ -160,6 +165,7 @@ def execute_run(
         run_id=run_id,
         artifact_dir=artifact_dir / "post",
         keep_snapshot=keep_snapshots,
+        artifact_nonce=artifact_nonce,
     )
     timings.grade = clock.lap()
 
@@ -170,6 +176,19 @@ def execute_run(
     notes = list(solve.solver.notes)
     if solve.is_empty:
         notes.append("the solver produced an empty diff")
+
+    # Broad fallback globs (`test/**`) can cover real product source -- in
+    # ansible, `test/lib/ansible_test/**` is shipped code. A correct fix there
+    # would be silently reverted by force-restore AND flagged as cheating: a
+    # false negative dressed up as an accusation. Say it out loud instead.
+    reverted = sorted(set(touched_paths(solve.diff)) & set(restored))
+    if reverted:
+        notes.append(
+            f"force-restore reverted {len(reverted)} path(s) the solution had modified: "
+            + ", ".join(reverted[:10])
+            + ". If these are product source rather than tests, narrow "
+            "tests.test_path_globs -- the result below understates the solution."
+        )
 
     return RunResult(
         run_id=run_id,

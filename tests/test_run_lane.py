@@ -17,7 +17,7 @@ from harness.core.run import execute_run
 from harness.runtime.fake import FakeRuntime, argv_contains
 from harness.solvers import GoldSolver, NoopSolver, resolve_solver
 
-from tests.test_phases import healthy, junit_for, wire_validation
+from tests.test_phases import NONCE, healthy, junit_for, wire_validation
 
 GLOBS = ["tests/**", "**/test_*.py", "**/*_test.py"]
 
@@ -97,7 +97,9 @@ def test_force_restore_happens_before_the_test_patch_is_applied(bundle, tiny_fix
         bundle.spec.tests.pass_to_pass + bundle.spec.tests.fail_to_pass, []
     )
     base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
-    grade_solution(runtime, bundle, base, "", run_id="01RUN", artifact_dir=tiny_fixture / "x")
+    grade_solution(
+        runtime, bundle, base, "", run_id="01RUN", artifact_dir=tiny_fixture / "x"
+    )
 
     assert runtime.index_of("checkout", "HEAD", "--") < runtime.index_of(
         "apply", "test_patch.diff"
@@ -119,7 +121,13 @@ def test_a_failing_baseline_aborts_before_the_solver_runs(bundle, tiny_fixture, 
 
     with pytest.raises(BaselineValidationError):
         execute_run(
-            runtime, bundle, base, GoldSolver(), run_id="01RUN", artifact_dir=tmp_path / "a"
+            runtime,
+            bundle,
+            base,
+            GoldSolver(),
+            run_id="01RUN",
+            artifact_dir=tmp_path / "a",
+            artifact_nonce=NONCE,
         )
     # The gold patch was never applied: no solver ran.
     assert not runtime.ran("apply", "gold-solution.diff")
@@ -131,10 +139,18 @@ def test_a_failing_baseline_aborts_before_the_solver_runs(bundle, tiny_fixture, 
 def _run(runtime, bundle, tiny_fixture, key, tmp_path, solver, post_junit):
     guarded_junit, gold_junit = healthy(bundle)
     wire_validation(runtime, bundle, guarded_junit=guarded_junit, gold_junit=gold_junit)
-    runtime.copy_out_payloads["/tmp/harness/post-junit.xml"] = post_junit
+    from harness.core.testrun import new_artifact_dir
+
+    runtime.copy_out_payloads[f"{new_artifact_dir(NONCE)}/post-junit.xml"] = post_junit
     base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
     return execute_run(
-        runtime, bundle, base, solver, run_id="01RUN", artifact_dir=tmp_path / "a"
+        runtime,
+        bundle,
+        base,
+        solver,
+        run_id="01RUN",
+        artifact_dir=tmp_path / "a",
+        artifact_nonce=NONCE,
     )
 
 
@@ -205,3 +221,47 @@ def test_an_unknown_solver_names_the_alternatives():
         resolve_solver("wat")
     assert "gold" in (caught.value.fix or "")
     assert "replay" in (caught.value.fix or "")
+
+
+# -- results tampering ----------------------------------------------------
+
+
+def test_result_forgery_shapes_are_flagged():
+    """The junit-forgery attack lives in an ordinary source file.
+
+    It touches no test path and no test config, so every path-based flag misses
+    it. What gives it away is what the code does.
+    """
+    from harness.core.gaming import detect_content_flags
+
+    attack = (
+        "diff --git a/tinylib/__init__.py b/tinylib/__init__.py\n"
+        "--- a/tinylib/__init__.py\n"
+        "+++ b/tinylib/__init__.py\n"
+        "+import atexit, glob\n"
+        "+def _forge():\n"
+        "+    for p in glob.glob('/var/opt/.*/*junit*.xml'):\n"
+        "+        open(p, 'w').write(_DOC)\n"
+        "+atexit.register(_forge)\n"
+    )
+    flags = detect_gaming_flags(attack, GLOBS)
+    assert flags, "the forgery attack must not be invisible"
+    assert any("atexit" in f for f in flags)
+    assert any("junit" in f for f in flags)
+    # And it must not fire on an honest fix.
+    honest = (
+        "diff --git a/tinylib/intervals.py b/tinylib/intervals.py\n"
+        "+    ordered = sorted(intervals)\n"
+        "+    return merged\n"
+    )
+    assert detect_content_flags(honest) == []
+
+
+def test_the_results_path_is_unguessable_and_outside_the_repo():
+    from harness.core.testrun import new_artifact_dir
+
+    first, second = new_artifact_dir(), new_artifact_dir()
+    assert first != second
+    assert not first.startswith("/tmp")
+    # Dot-prefixed: a plain `glob('/var/opt/**/*.xml')` will not descend into it.
+    assert "/." in first

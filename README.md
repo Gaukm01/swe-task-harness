@@ -91,7 +91,7 @@ bugs, four tests that pass at base and two that do not.
 | 3 | bundle invalid |
 | 4 | baseline validation failed |
 | 5 | solver failed |
-| 6 | grading inconclusive (infrastructure, not the solution) |
+| 6 | grading inconclusive (infrastructure, not the solution) — raised after artifacts are written |
 | 7 | docker unavailable |
 
 A caller can tell "this bundle is broken" from "this solver failed" from "the

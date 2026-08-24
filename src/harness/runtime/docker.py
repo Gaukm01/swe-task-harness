@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import tarfile
 import tempfile
 import time
 from dataclasses import dataclass
@@ -205,6 +204,10 @@ class DockerRuntime:
             args += ["--cpus", spec.cpus]
         if spec.pids_limit:
             args += ["--pids-limit", str(spec.pids_limit)]
+        if spec.drop_capabilities:
+            args += ["--cap-drop", "ALL"]
+        if spec.no_new_privileges:
+            args += ["--security-opt", "no-new-privileges"]
         if spec.workdir:
             args += ["--workdir", spec.workdir]
         for key, value in sorted(spec.env.items()):
@@ -287,11 +290,8 @@ class DockerRuntime:
         """
         target = Path(path)
         with tempfile.TemporaryDirectory() as staging:
-            archive = Path(staging) / "payload.tar"
             payload = Path(staging) / target.name
             payload.write_text(content)
-            with tarfile.open(archive, "w") as tar:
-                tar.add(payload, arcname=target.name)
             self._require(
                 self._run(
                     ["cp", "--archive", str(payload), f"{container_id}:{path}"], timeout_s=120

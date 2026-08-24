@@ -70,6 +70,11 @@ class ContainerSpec:
     pids_limit: int | None = None
     workdir: str | None = None
     platform: str | None = None
+    # --cap-drop=ALL: the process keeps its uid but loses CAP_NET_RAW,
+    # CAP_SETUID, CAP_MKNOD, CAP_SYS_CHROOT and the rest of the default set.
+    drop_capabilities: bool = False
+    # --security-opt=no-new-privileges: setuid binaries cannot re-elevate.
+    no_new_privileges: bool = False
     env: dict[str, str] = field(default_factory=dict)
 
     def hardened(
@@ -80,11 +85,20 @@ class ContainerSpec:
         cpus: str = "2",
         pids_limit: int = 512,
     ) -> ContainerSpec:
-        """Return this spec with egress cut and resource ceilings applied.
+        """Return this spec with egress cut, ceilings applied, and privileges dropped.
 
         Used for SOLVE and SCORED. No network means the solver cannot fetch the
         upstream commit that contains the fix, which is what makes hidden-test
         protection hold against a capable adversary rather than a polite one.
+
+        On privileges, precisely: every Linux capability is dropped and
+        `no-new-privileges` is set, so the process cannot regain any. The
+        container still runs as whatever uid the image specifies -- usually
+        root. It is not run as an unprivileged user, because SWE-bench instance
+        images install and build as root and would break; `user=` is available
+        per-bundle for images that tolerate it. Root-with-no-capabilities inside
+        a network-isolated, disposable container is the tradeoff, and stating it
+        exactly beats implying the container is unprivileged.
         """
         from dataclasses import replace
 
@@ -95,6 +109,8 @@ class ContainerSpec:
             memory=memory,
             cpus=cpus,
             pids_limit=pids_limit,
+            drop_capabilities=True,
+            no_new_privileges=True,
         )
 
 

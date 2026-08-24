@@ -155,6 +155,13 @@ class Store:
             (run_id, invocation_id, seq, utc_now(), kind, json.dumps(payload)),
         )
 
+    def events_for_run(self, run_id: str) -> list[sqlite3.Row]:
+        cursor = self._conn.execute(
+            "SELECT * FROM events WHERE run_id = ? ORDER BY seq, id", (run_id,)
+        )
+        rows: list[sqlite3.Row] = cursor.fetchall()
+        return rows
+
     def events_for_invocation(self, invocation_id: str) -> list[sqlite3.Row]:
         cursor = self._conn.execute(
             "SELECT * FROM events WHERE invocation_id = ? ORDER BY seq, id", (invocation_id,)
