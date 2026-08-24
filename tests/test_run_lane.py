@@ -89,16 +89,22 @@ def test_force_restore_restores_tracked_tests_and_deletes_added_ones(bundle):
     assert "tinylib/intervals.py" not in restored
 
 
-def test_force_restore_happens_before_the_test_patch_is_applied(bundle, tiny_fixture, key):
+def test_force_restore_happens_before_the_test_patch_is_applied(
+    bundle, tiny_fixture, key, tmp_path
+):
     from harness.core.phases import grade_solution
+    from harness.core.testrun import new_artifact_dir
 
     runtime = FakeRuntime()
-    runtime.copy_out_payloads["/tmp/harness/post-junit.xml"] = junit_for(
+    runtime.copy_out_payloads[f"{new_artifact_dir(NONCE)}/post-junit.xml"] = junit_for(
         bundle.spec.tests.pass_to_pass + bundle.spec.tests.fail_to_pass, []
     )
     base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
+    # tmp_path, never the bundle: artifacts written into examples/ pollute the
+    # deliverable and feed hash_build_context, silently changing the cache key.
     grade_solution(
-        runtime, bundle, base, "", run_id="01RUN", artifact_dir=tiny_fixture / "x"
+        runtime, bundle, base, "", run_id="01RUN",
+        artifact_dir=tmp_path / "grade", artifact_nonce=NONCE,
     )
 
     assert runtime.index_of("checkout", "HEAD", "--") < runtime.index_of(

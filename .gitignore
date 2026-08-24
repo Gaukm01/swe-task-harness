@@ -12,3 +12,8 @@ site/
 # All run evidence stays out of git for now. The submission artifact gets
 # committed deliberately, once the code is frozen.
 artifacts/
+
+# No test may write run artifacts into a bundle: it pollutes the deliverable
+# and feeds hash_build_context, silently changing the environment cache key.
+examples/*/x/
+examples/*/*/x/
