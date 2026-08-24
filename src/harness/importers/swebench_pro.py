@@ -21,6 +21,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -41,6 +42,8 @@ from harness.core.errors import UsageError
 DATASET = "ScaleAI/SWE-bench_Pro"
 ROWS_ENDPOINT = "https://datasets-server.huggingface.co/rows"
 PAGE_SIZE = 100
+RATE_LIMIT_RETRIES = 5
+RATE_LIMIT_BACKOFF_S = 6
 TOTAL_ROWS_GUESS = 731
 
 # Every instance ships a prebuilt image under this repository.
@@ -225,14 +228,33 @@ def fetch_rows(offset: int, length: int = PAGE_SIZE, *, timeout: int = 60) -> li
             "length": length,
         }
     )
-    try:
-        with urllib.request.urlopen(f"{ROWS_ENDPOINT}?{query}", timeout=timeout) as response:
-            payload = json.loads(response.read())
-    except urllib.error.URLError as error:
+    # The datasets server rate-limits a burst of page requests with a 429.
+    # Scanning 731 rows is eight requests, and a survey does several scans, so
+    # this is reachable in normal use -- back off rather than failing the import.
+    last: Exception | None = None
+    for attempt in range(RATE_LIMIT_RETRIES):
+        try:
+            with urllib.request.urlopen(f"{ROWS_ENDPOINT}?{query}", timeout=timeout) as response:
+                payload = json.loads(response.read())
+            break
+        except urllib.error.HTTPError as error:
+            last = error
+            if error.code != 429:
+                raise UsageError(
+                    f"the HuggingFace datasets server returned {error.code}: {error.reason}",
+                    fix="Check the dataset name and split, then retry.",
+                ) from error
+            time.sleep(RATE_LIMIT_BACKOFF_S * (attempt + 1))
+        except urllib.error.URLError as error:
+            raise UsageError(
+                f"could not reach the HuggingFace datasets server: {error}",
+                fix="Check network access on the host, then retry.",
+            ) from error
+    else:
         raise UsageError(
-            f"could not reach the HuggingFace datasets server: {error}",
-            fix="Check network access on the host, then retry.",
-        ) from error
+            f"the HuggingFace datasets server kept rate-limiting us: {last}",
+            fix=f"Wait a minute and retry; it allows a burst then throttles.",
+        )
 
     rows = payload.get("rows") or []
     return [item.get("row", {}) for item in rows]

@@ -9,5 +9,6 @@ __pycache__/
 .DS_Store
 site/
 
-# Test-run evidence. The submission run gets committed deliberately, later.
-artifacts/agent-run/
+# All run evidence stays out of git for now. The submission artifact gets
+# committed deliberately, once the code is frozen.
+artifacts/

@@ -16,6 +16,8 @@ from pathlib import Path
 import secrets
 
 from harness.adapters import get_adapter
+from typing import Any
+
 from harness.core.bundle import TaskSpec
 from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.runtime import ContainerRuntime, ExecResult
@@ -133,6 +135,53 @@ def group_by_file(requested: dict[str, Bucket]) -> dict[str, dict[str, Bucket]]:
     return groups
 
 
+# Re-running a group one selector at a time is only worth it for a group small
+# enough that the cost stays trivial. Beyond this, report the group as-is.
+MAX_ISOLATION_SELECTORS = 25
+
+
+def _every_selector_missing(outcomes: list[TestOutcome]) -> bool:
+    """True when nothing resolved -- the signature of an aborted invocation."""
+    return bool(outcomes) and all(o.status is TestStatus.NOT_FOUND for o in outcomes)
+
+
+def _isolate_selectors(
+    runtime: ContainerRuntime,
+    container_id: str,
+    spec: TaskSpec,
+    adapter: Any,
+    asked: dict[str, Bucket],
+    *,
+    workdir: str,
+    container_dir: str,
+    artifact_dir: Path,
+    suffix: str,
+) -> list[TestOutcome]:
+    """Re-run each selector alone, so a broken one cannot hide the working ones."""
+    if len(asked) > MAX_ISOLATION_SELECTORS:
+        return [
+            TestOutcome(test_id=s, bucket=b, status=TestStatus.NOT_FOUND,
+                        message="the test run resolved no selectors at all")
+            for s, b in asked.items()
+        ]
+
+    isolated: list[TestOutcome] = []
+    for index, (selector, bucket) in enumerate(asked.items()):
+        junit = f"{container_dir}/{suffix}-iso{index}-junit.xml"
+        argv = adapter.run_argv(spec.tests.run_cmd_template, [selector], junit)
+        result = runtime.exec(container_id, argv, workdir=workdir, timeout_s=spec.tests.timeout_s)
+        host = artifact_dir / f"{suffix}-iso{index}-junit.xml"
+        copied = runtime.copy_out(container_id, junit, host)
+        isolated.extend(
+            adapter.parse(
+                junit_path=host if copied else None,
+                exec_result=result,
+                requested={selector: bucket},
+            )
+        )
+    return isolated
+
+
 def _canary_applies(outcomes: list[TestOutcome]) -> bool:
     """Whether the canary's verdict is meaningful for this group.
 
@@ -237,6 +286,18 @@ def run_selectors(
             exec_result=exec_result,
             requested=asked,
         )
+
+        # One unresolvable selector aborts the whole invocation, so a single
+        # malformed id makes every sibling look missing. Seen on a real
+        # instance whose dataset node ids were truncated mid-parameter: eleven
+        # selectors reported `not_found` when nine were perfectly fine. Isolate
+        # them so the report names the ones that are actually broken.
+        if _every_selector_missing(parsed) and len(group) > 1:
+            parsed = _isolate_selectors(
+                runtime, container_id, spec, adapter, asked,
+                workdir=workdir, container_dir=container_dir, artifact_dir=artifact_dir,
+                suffix=suffix,
+            )
 
         if canary:
             verdict = next((o for o in parsed if o.test_id == canary.node_id), None)

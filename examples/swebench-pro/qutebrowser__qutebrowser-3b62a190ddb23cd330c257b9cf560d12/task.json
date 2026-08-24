@@ -1,0 +1,44 @@
+{
+  "task_id": "qutebrowser__qutebrowser-3b62a190ddb23cd330c257b9cf560d12",
+  "repo": "https://github.com/qutebrowser/qutebrowser",
+  "base_commit": "34db7a1ef4139f30f5b6289ea114c44e1a7b33a6",
+  "language": "python",
+  "environment": {
+    "image": "jefzda/sweap-images:qutebrowser.qutebrowser-qutebrowser__qutebrowser-479aa075ac79dc975e2e949e188a328e95bf78ff-vc2f56a753b62a190ddb23cd330c257b9cf560",
+    "platform": "linux/amd64",
+    "repo_path_in_image": "/app"
+  },
+  "tests": {
+    "framework": "pytest",
+    "run_cmd_template": "python -m pytest {selectors} --junitxml={out}",
+    "fail_to_pass": [
+      "tests/unit/misc/test_elf.py::test_find_versions[\\x00QtWebEngine/6.4.0",
+      "tests/unit/misc/test_elf.py::test_find_versions_invalid[\\x00QtWebEngine/6.4.0"
+    ],
+    "pass_to_pass": [
+      "tests/unit/misc/test_elf.py::test_format_sizes[<4sBBBBB7x-16]",
+      "tests/unit/misc/test_elf.py::test_format_sizes[<HHIQQQIHHHHHH-48]",
+      "tests/unit/misc/test_elf.py::test_format_sizes[<HHIIIIIHHHHHH-36]",
+      "tests/unit/misc/test_elf.py::test_format_sizes[<IIQQQQIIQQ-64]",
+      "tests/unit/misc/test_elf.py::test_format_sizes[<IIIIIIIIII-40]",
+      "tests/unit/misc/test_elf.py::test_result",
+      "tests/unit/misc/test_elf.py::test_hypothesis",
+      "tests/unit/misc/test_elf.py::test_find_versions[\\x00QtWebEngine/5.15.9",
+      "tests/unit/misc/test_elf.py::test_find_versions_invalid[blablabla-No"
+    ],
+    "test_path_globs": [
+      "tests/unit/misc/test_elf.py",
+      "tests/**",
+      "test/**",
+      "**/test_*.py",
+      "**/*_test.py",
+      "**/*.test.js"
+    ],
+    "timeout_s": 600
+  },
+  "source": {
+    "dataset": "ScaleAI/SWE-bench_Pro",
+    "instance_id": "instance_qutebrowser__qutebrowser-479aa075ac79dc975e2e949e188a328e95bf78ff-vc2f56a753b62a190ddb23cd330c257b9cf560d12",
+    "dockerhub_tag": "qutebrowser.qutebrowser-qutebrowser__qutebrowser-479aa075ac79dc975e2e949e188a328e95bf78ff-vc2f56a753b62a190ddb23cd330c257b9cf560"
+  }
+}
