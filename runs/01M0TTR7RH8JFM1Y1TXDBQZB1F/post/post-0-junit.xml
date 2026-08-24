@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="2" hostname="f2dd6d548379" name="pytest" skipped="0" tests="4" time="0.069" timestamp="2026-08-24T21:41:27.030159"><testcase classname="test.units.module_utils.basic.test_sanitize_keys" file="test/units/module_utils/basic/test_sanitize_keys.py" line="12" name="test_sanitize_keys_non_dict_types" time="0.001"></testcase><testcase classname="test.units.module_utils.basic.test_sanitize_keys" file="test/units/module_utils/basic/test_sanitize_keys.py" line="77" name="test_sanitize_keys_with_ignores" time="0.001"></testcase><testcase classname="test.units.module_utils.basic.test_sanitize_keys" file="test/units/module_utils/basic/test_sanitize_keys.py" line="53" name="test_sanitize_keys_dict" time="0.006"><failure message="AssertionError: assert [None, True, ..., [1, 2], ...] == [None, True, ..., [1, 2], ...]
+  At index 6 diff: {&apos;key1&apos;: [&apos;value1a&apos;, &apos;value1b&apos;], &apos;some-password&apos;: &apos;value-for-some-password&apos;, &apos;key2&apos;: {&apos;key3&apos;: {&apos;value3b&apos;, &apos;value3a&apos;}, &apos;i-have-a-secret&apos;: {&apos;secret-password&apos;: &apos;value-for-secret-password&apos;, &apos;key4&apos;: &apos;value4&apos;}}} != {&apos;key1&apos;: [&apos;value1a&apos;, &apos;value1b&apos;], &apos;some-********&apos;: &apos;value-for-some-password&apos;, &apos;key2&apos;: {&apos;key3&apos;: {&apos;value3b&apos;, &apos;value3a&apos;}, &apos;i-have-a-********&apos;: {&apos;********-********&apos;: &apos;value-for-secret-password&apos;, &apos;key4&apos;: &apos;value4&apos;}}}
+  Full diff:
+    [
+     None,
+     True,
+     100,
+     &apos;some string&apos;,...
+  
+  ...Full output truncated (16 lines hidden), use &apos;-vv&apos; to show">test/units/module_utils/basic/test_sanitize_keys.py:75: in test_sanitize_keys_dict
+    _run_comparison(d)
+test/units/module_utils/basic/test_sanitize_keys.py:51: in _run_comparison
+    assert ret == expected
+E   AssertionError: assert [None, True, ..., [1, 2], ...] == [None, True, ..., [1, 2], ...]
+E     At index 6 diff: {&apos;key1&apos;: [&apos;value1a&apos;, &apos;value1b&apos;], &apos;some-password&apos;: &apos;value-for-some-password&apos;, &apos;key2&apos;: {&apos;key3&apos;: {&apos;value3b&apos;, &apos;value3a&apos;}, &apos;i-have-a-secret&apos;: {&apos;secret-password&apos;: &apos;value-for-secret-password&apos;, &apos;key4&apos;: &apos;value4&apos;}}} != {&apos;key1&apos;: [&apos;value1a&apos;, &apos;value1b&apos;], &apos;some-********&apos;: &apos;value-for-some-password&apos;, &apos;key2&apos;: {&apos;key3&apos;: {&apos;value3b&apos;, &apos;value3a&apos;}, &apos;i-have-a-********&apos;: {&apos;********-********&apos;: &apos;value-for-secret-password&apos;, &apos;key4&apos;: &apos;value4&apos;}}}
+E     Full diff:
+E       [
+E        None,
+E        True,
+E        100,
+E        &apos;some string&apos;,...
+E     
+E     ...Full output truncated (16 lines hidden), use &apos;-vv&apos; to show</failure></testcase><testcase classname="test.units.module_utils.basic.test_hz_5d085e10a6" file="test/units/module_utils/basic/test_hz_5d085e10a6.py" line="2" name="test_hz_5d085e10a6" time="0.001"><failure message="AssertionError: harness integrity canary 5d085e10a6
+assert False">test/units/module_utils/basic/test_hz_5d085e10a6.py:4: in test_hz_5d085e10a6
+    assert False, &quot;harness integrity canary 5d085e10a6&quot;
+E   AssertionError: harness integrity canary 5d085e10a6
+E   assert False</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,155 @@
+diff --git a/lib/ansible/module_utils/basic.py b/lib/ansible/module_utils/basic.py
+index 608f390..aa57d42 100644
+--- a/lib/ansible/module_utils/basic.py
++++ b/lib/ansible/module_utils/basic.py
+@@ -411,9 +411,8 @@ def remove_values(value, no_log_strings):
+         old_data, new_data = deferred_removals.popleft()
+         if isinstance(new_data, Mapping):
+             for old_key, old_elem in old_data.items():
+-                new_key = _remove_values_conditions(old_key, no_log_strings, deferred_removals)
+                 new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)
+-                new_data[new_key] = new_elem
++                new_data[old_key] = new_elem
+         else:
+             for elem in old_data:
+                 new_elem = _remove_values_conditions(elem, no_log_strings, deferred_removals)
+@@ -427,6 +426,103 @@ def remove_values(value, no_log_strings):
+     return new_value
+ 
+ 
++def _new_sanitize_container(value, deferred):
++    """
++    Helper for :func:`sanitize_keys`.
++
++    If *value* is a container (Mapping, MutableSequence, generic Sequence, or
++    Set) a new, empty container of the appropriate type is created, the
++    *(old, new)* pair is appended to *deferred* so that the main loop can fill
++    it in later, and the new container is returned.  All other values are
++    returned unchanged.
++
++    :arg value: The value to inspect.
++    :arg deferred: A deque to which container pairs are appended.
++    :returns: A new empty container, or *value* itself for scalars.
++    """
++    if isinstance(value, Mapping):
++        new_value = type(value)() if isinstance(value, MutableMapping) else {}
++        deferred.append((value, new_value))
++        return new_value
++    if isinstance(value, MutableSequence):
++        new_value = type(value)()
++        deferred.append((value, new_value))
++        return new_value
++    if isinstance(value, Sequence) and not isinstance(value, (text_type, binary_type)):
++        # Non-mutable sequences (e.g. tuples) are stored as lists temporarily
++        new_value = []
++        deferred.append((value, new_value))
++        return new_value
++    if isinstance(value, MutableSet):
++        new_value = type(value)()
++        deferred.append((value, new_value))
++        return new_value
++    if isinstance(value, Set):
++        new_value = set()
++        deferred.append((value, new_value))
++        return new_value
++    return value
++
++
++def sanitize_keys(obj, no_log_strings, ignore_keys=frozenset()):
++    """Return a copy of *obj* in which every mapping key that contains any
++    string from *no_log_strings* is redacted.
++
++    :arg obj: The object whose mapping keys should be sanitised.  If *obj* is
++        not a :class:`~collections.abc.Mapping` it is returned unchanged.
++    :arg no_log_strings: An iterable of strings (text or bytes) whose
++        occurrences in mapping key names must be masked.  Each element is
++        converted to a native string via :func:`to_native` before use.
++    :arg ignore_keys: A :class:`frozenset` of exact key names that must
++        **not** be sanitised even if they contain a sensitive substring.
++        Defaults to an empty set.
++    :returns: A copy of *obj* with sensitive key names masked (substrings
++        replaced by '********') or replaced by the sentinel
++        'VALUE_SPECIFIED_IN_NO_LOG_PARAMETER' when the full key name
++        matches a sensitive string.  Non-mapping objects are returned
++        unchanged.
++
++    Keys that start with '_ansible' are always preserved regardless of
++    *no_log_strings*.
++
++    Uses an iterative (deferred) approach to avoid hitting Python's recursion
++    limit on deeply nested structures.
++    """
++    no_log_strings = [to_native(s, errors='surrogate_or_strict') for s in no_log_strings]
++
++    if not no_log_strings or not isinstance(obj, Mapping):
++        return obj
++
++    deferred = deque()
++    result = _new_sanitize_container(obj, deferred)
++
++    while deferred:
++        old_data, new_data = deferred.popleft()
++        if isinstance(new_data, Mapping):
++            for key, value in old_data.items():
++                new_value = _new_sanitize_container(value, deferred)
++
++                key_native = to_native(key, errors='surrogate_or_strict')
++                if key_native in ignore_keys or key_native.startswith('_ansible'):
++                    new_key = key_native
++                elif key_native in no_log_strings:
++                    new_key = 'VALUE_SPECIFIED_IN_NO_LOG_PARAMETER'
++                else:
++                    new_key = key_native
++                    for omit_me in no_log_strings:
++                        new_key = new_key.replace(omit_me, '*' * 8)
++
++                new_data[new_key] = new_value
++        elif isinstance(new_data, MutableSequence):
++            for elem in old_data:
++                new_data.append(_new_sanitize_container(elem, deferred))
++        elif isinstance(new_data, MutableSet):
++            for elem in old_data:
++                new_data.add(_new_sanitize_container(elem, deferred))
++
++    return result
++
++
+ def heuristic_log_sanitize(data, no_log_values=None):
+     ''' Remove strings that look like passwords from log messages '''
+     # Currently filters:
+diff --git a/lib/ansible/modules/uri.py b/lib/ansible/modules/uri.py
+index 1db9b93..6bf11ec 100644
+--- a/lib/ansible/modules/uri.py
++++ b/lib/ansible/modules/uri.py
+@@ -383,7 +383,7 @@ import shutil
+ import sys
+ import tempfile
+ 
+-from ansible.module_utils.basic import AnsibleModule
++from ansible.module_utils.basic import AnsibleModule, sanitize_keys
+ from ansible.module_utils.six import PY2, iteritems, string_types
+ from ansible.module_utils.six.moves.urllib.parse import urlencode, urlsplit
+ from ansible.module_utils._text import to_native, to_text
+@@ -392,6 +392,12 @@ from ansible.module_utils.urls import fetch_url, prepare_multipart, url_argument
+ 
+ JSON_CANDIDATES = ('text', 'json', 'javascript')
+ 
++NO_MODIFY_KEYS = frozenset((
++    'msg', 'exception', 'warnings', 'deprecations', 'failed', 'skipped',
++    'changed', 'rc', 'stdout', 'stderr', 'elapsed', 'path', 'location',
++    'content_type',
++))
++
+ 
+ def format_message(err, resp):
+     msg = resp.pop('msg')
+@@ -734,6 +740,9 @@ def main():
+     else:
+         u_content = to_text(content, encoding=content_encoding)
+ 
++    if module.no_log_values:
++        uresp = sanitize_keys(uresp, module.no_log_values, NO_MODIFY_KEYS)
++
+     if resp['status'] not in status_code:
+         uresp['msg'] = 'Status code was %s and not %s: %s' % (resp['status'], status_code, uresp.get('msg', ''))
+         if return_content:

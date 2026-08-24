@@ -1,0 +1,141 @@
+{
+  "run_id": "01M0TTR7RH8JFM1Y1TXDBQZB1F",
+  "task_id": "ansible__ansible-bf98f03-3a812189a1133297f7f5468579283f86",
+  "bundle_digest": "5f207b61744aa974bf35ff7256be66f815455ae7509b4a18b11861e05aa1a6d4",
+  "image": "harness/ansible__ansible-bf98f03-3a812189a1133297f7f5468579283f86:base-0e20cd17f68e",
+  "upstream_image": "jefzda/sweap-images:ansible.ansible-ansible__ansible-bf98f031f3f5af31a2d78dc2f0a58fe92ebae0bb-v1055803c3a812189a1133297f7f5468579283f86",
+  "cache_key": "0e20cd17f68e815529abf41ebd813069314b5cf16db19d2a45e216bf7202170e",
+  "base_commit": "17332532973343248297e3d3c746738d1f3b2f56",
+  "solver": {
+    "kind": "agent",
+    "model": "claude-sonnet-4-6",
+    "turns": 44,
+    "cost_usd": 1.954986,
+    "summary": "## Summary of Changes\n\n### 1. `lib/ansible/module_utils/basic.py`\n\n**Modified `remove_values`**: Removed the line that called `_remove_values_conditions` on mapping keys. Previously, `remove_values` sanitized both keys AND values of mappings. Now it only sanitizes values, leaving key names unchanged (as required by the feature spec).\n\n**Added `_new_sanitize_container` helper**: A module-level function that creates an appropriate empty container for the `sanitize_keys` deferred-processing approach. It handles Mapping, MutableSequence, Sequence (non-string), MutableSet, and Set types.\n\n**Added `sanitize_keys(obj, no_log_strings, ignore_keys=frozenset())`**: A new public function that sanitizes mapping KEYS (not values) containing sensitive strings:\n- Non-mapping top-level objects are returned unchanged\n- Uses a deferred (iterative) queue approach to avoid recursion-limit issues on deeply nested structures\n- For each mapping key: if the key is in `ignore_keys` or starts with `_ansible`, it's preserved; if it exactly matches a no_log string, it's replaced with `VALUE_SPECIFIED_IN_NO_LOG_PARAMETER`; otherwise, occurrences of each no_log string are replaced with `********`\n- Recurses into nested mappings, lists, and sets to apply key sanitization uniformly\n- Accepts both text and bytes in `no_log_strings` (via `to_native`)\n\n### 2. `lib/ansible/modules/uri.py`\n\n**Added import**: Added `sanitize_keys` to the import from `ansible.module_utils.basic`.\n\n**Added `NO_MODIFY_KEYS` constant**: A `frozenset` containing keys that must never be censored: `msg`, `exception`, `warnings`, `deprecations`, `failed`, `skipped`, `changed`, `rc`, `stdout`, `stderr`, `elapsed`, `path`, `location`, `content_type`.\n\n**Added `sanitize_keys` call**: In `main()`, just before the final `exit_json`/`fail_json` calls, when `module.no_log_values` is non-empty the response dict `uresp` is sanitized using `sanitize_keys(uresp, module.no_log_values, NO_MODIFY_KEYS)` so that any response header keys containing sensitive strings are masked while the protected fields listed in `NO_MODIFY_KEYS` remain unchanged."
+  },
+  "outcome": "unresolved",
+  "gaming_flags": [],
+  "summary": {
+    "f2p_fixed": 3,
+    "f2p_total": 4,
+    "p2p_regressed": 0,
+    "p2p_total": 5
+  },
+  "tests": [
+    {
+      "id": "test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 40
+    },
+    {
+      "id": "test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 1
+    },
+    {
+      "id": "test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove",
+      "bucket": "f2p",
+      "baseline": "failed",
+      "post": "passed",
+      "transition": "fixed",
+      "message": "AssertionError: {'one[133 chars]R', 'VALUE_SPECIFIED_IN_NO_LOG_PARAMETER': ['V[45 chars]']}]} != {'one[133 chars]R', 'base': ['VALUE_SPECIFIED_IN_NO_LOG_PARAME[14 chars]']}]}   {'one': 1,    'three': ['VALUE_SPECIFIED_IN_NO_LOG_PARAMETER',              'musketeers',              None, +            {'base': ['VALUE_SPECIFIED_IN_NO_LOG_PARAMETER', 'raquets'], -            {'VALUE_SPECIFIED_IN_NO_LOG_PARAMETER': ['VALUE_SPECIFIED_IN_NO_LOG_PARAMETER', -                                                     'raquets'],               'ping': 'VALUE_SPECIFIED_IN_NO_LOG_PARAMETER'}],    'two': 'dos'}\ntest/units/module_utils/basic/test_no_log.py:130: in test_strings_to_remove\n    self.assertEqual(remove_values(value, no_log_strings), expected)\nE   AssertionError: {'one[133 chars]R', 'VALUE_SPECIFIED_IN_NO_LOG_PARAMETER': ['V[45 chars]']}]} != {'one[133 chars]R', 'base': ['VALUE_SPECIFIED_IN_NO_LOG_PARAME[14 chars]']}]}\nE     {'one': 1,\nE      'three': ['VALUE_SPECIFIED_IN_NO_LOG_PARAMETER',\nE                'musketeers',\nE                None,\nE   +            {'base': ['VALUE_SPECIFIED_IN_NO_LOG_PARAMETER', 'raquets'],\nE   -            {'VALUE_SPECIFIED_IN_NO_LOG_PARAMETER': ['VALUE_SPECIFIED_IN_NO_LOG_PARAMETER',\nE   -                                                     'raquets'],\nE                 'ping': 'VALUE_SPECIFIED_IN_NO_LOG_PARAMETER'}],\nE      'two': 'dos'}",
+      "duration_ms": 2
+    },
+    {
+      "id": "test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 1
+    },
+    {
+      "id": "test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 1
+    },
+    {
+      "id": "test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 1
+    },
+    {
+      "id": "test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict",
+      "bucket": "f2p",
+      "baseline": "collection_error",
+      "post": "failed",
+      "transition": "still_failing",
+      "message": "AssertionError: assert [None, True, ..., [1, 2], ...] == [None, True, ..., [1, 2], ...]   At index 6 diff: {'key1': ['value1a', 'value1b'], 'some-password': 'value-for-some-password', 'key2': {'key3': {'value3b', 'value3a'}, 'i-have-a-secret': {'secret-password': 'value-for-secret-password', 'key4': 'value4'}}} != {'key1': ['value1a', 'value1b'], 'some-********': 'value-for-some-password', 'key2': {'key3': {'value3b', 'value3a'}, 'i-have-a-********': {'********-********': 'value-for-secret-password', 'key4': 'value4'}}}   Full diff:     [      None,      True,      100,      'some string',...      ...Full output truncated (16 lines hidden), use '-vv' to show\ntest/units/module_utils/basic/test_sanitize_keys.py:75: in test_sanitize_keys_dict\n    _run_comparison(d)\ntest/units/module_utils/basic/test_sanitize_keys.py:51: in _run_comparison\n    assert ret == expected\nE   AssertionError: assert [None, True, ..., [1, 2], ...] == [None, True, ..., [1, 2], ...]\nE     At index 6 diff: {'key1': ['value1a', 'value1b'], 'some-password': 'value-for-some-password', 'key2': {'key3': {'value3b', 'value3a'}, 'i-have-a-secret': {'secret-password': 'value-for-secret-password', 'key4': 'value4'}}} != {'key1': ['value1a', 'value1b'], 'some-********': 'value-for-some-password', 'key2': {'key3': {'value3b', 'value3a'}, 'i-have-a-********': {'********-********': 'value-for-secret-password', 'key4': 'value4'}}}\nE     Full diff:\nE       [\nE        None,\nE        True,\nE        100,\nE        'some string',...\nE     \nE     ...Full output truncated (16 lines hidden), use '-vv' to show",
+      "duration_ms": 6
+    },
+    {
+      "id": "test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_non_dict_types",
+      "bucket": "f2p",
+      "baseline": "collection_error",
+      "post": "passed",
+      "transition": "fixed",
+      "message": "test/units/module_utils/basic/test_sanitize_keys.py failed to import",
+      "duration_ms": 1
+    },
+    {
+      "id": "test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_with_ignores",
+      "bucket": "f2p",
+      "baseline": "collection_error",
+      "post": "passed",
+      "transition": "fixed",
+      "message": "test/units/module_utils/basic/test_sanitize_keys.py failed to import",
+      "duration_ms": 1
+    }
+  ],
+  "timings_ms": {
+    "setup": 0,
+    "validate": 6820,
+    "solve": 809930,
+    "grade": 4181
+  },
+  "artifacts": {
+    "solution_diff": "runs/01M0TTR7RH8JFM1Y1TXDBQZB1F/solution.diff",
+    "report_json": "runs/01M0TTR7RH8JFM1Y1TXDBQZB1F/report.json"
+  },
+  "notes": [],
+  "restored_test_count": 3555,
+  "restored_test_paths": [
+    "packaging/release/tests/version_helper_test.py",
+    "test/ansible_test/Makefile",
+    "test/ansible_test/unit/test_diff.py",
+    "test/ansible_test/validate-modules-unit/test_validate_modules_regex.py",
+    "test/integration/network-integration.cfg",
+    "test/integration/network-integration.requirements.txt",
+    "test/integration/targets/add_host/aliases",
+    "test/integration/targets/add_host/tasks/main.yml",
+    "test/integration/targets/ansiballz_python/aliases",
+    "test/integration/targets/ansiballz_python/library/check_rlimit_and_maxfd.py",
+    "test/integration/targets/ansiballz_python/library/custom_module.py",
+    "test/integration/targets/ansiballz_python/library/sys_check.py",
+    "test/integration/targets/ansiballz_python/module_utils/custom_util.py",
+    "test/integration/targets/ansiballz_python/tasks/main.yml",
+    "test/integration/targets/ansible-doc/aliases",
+    "test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/MANIFEST.json",
+    "test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/cache/notjsonfile.py",
+    "test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/inventory/statichost.py",
+    "test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/lookup/noop.py",
+    "test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/modules/fakemodule.py"
+  ]
+}

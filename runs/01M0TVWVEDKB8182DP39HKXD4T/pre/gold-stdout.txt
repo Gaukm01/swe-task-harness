@@ -1,0 +1,10 @@
+$ python -m pytest tests/test_intervals.py::test_merges_touching_intervals tests/test_intervals.py::test_sorts_unordered_input tests/test_intervals.py::test_empty_input tests/test_intervals.py::test_single_interval tests/test_intervals.py::test_merges_overlapping tests/test_intervals.py::test_keeps_disjoint_intervals --junitxml=/var/opt/.hz-b3e9c483c32d7f98f2347c95/gold-junit.xml
+============================= test session starts ==============================
+platform linux -- Python 3.11.16, pytest-8.3.4, pluggy-1.6.0
+rootdir: /workspace/repo
+collected 6 items
+
+tests/test_intervals.py ......                                           [100%]
+
+--- generated xml file: /var/opt/.hz-b3e9c483c32d7f98f2347c95/gold-junit.xml ---
+============================== 6 passed in 0.01s ===============================

@@ -1,0 +1,31 @@
+$ python -m pytest scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_lists scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_paths scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_full_flow scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_parse_docs scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_type_to_argparse scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_is_optional scripts/solr_builder/tests/test_hz_d9c2dbd36a.py::test_hz_d9c2dbd36a --junitxml=/var/opt/.hz-d1523991e6ad79d9b91751e6/post-junit.xml
+============================= test session starts ==============================
+platform linux -- Python 3.11.1, pytest-7.4.3, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pyproject.toml
+plugins: rerunfailures-15.1, anyio-4.10.0, asyncio-0.21.1, cov-4.1.0
+asyncio: mode=Mode.STRICT
+collecting ... collected 7 items
+
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_lists PASSED [ 14%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_paths PASSED [ 28%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_full_flow PASSED [ 42%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_parse_docs PASSED [ 57%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_type_to_argparse PASSED [ 71%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_is_optional PASSED [ 85%]
+scripts/solr_builder/tests/test_hz_d9c2dbd36a.py::test_hz_d9c2dbd36a RERUN [100%]
+scripts/solr_builder/tests/test_hz_d9c2dbd36a.py::test_hz_d9c2dbd36a RERUN [100%]
+scripts/solr_builder/tests/test_hz_d9c2dbd36a.py::test_hz_d9c2dbd36a RERUN [100%]
+scripts/solr_builder/tests/test_hz_d9c2dbd36a.py::test_hz_d9c2dbd36a FAILED [100%]
+
+=================================== FAILURES ===================================
+______________________________ test_hz_d9c2dbd36a ______________________________
+scripts/solr_builder/tests/test_hz_d9c2dbd36a.py:4: in test_hz_d9c2dbd36a
+    assert False, "harness integrity canary d9c2dbd36a"
+E   AssertionError: harness integrity canary d9c2dbd36a
+E   assert False
+--- generated xml file: /var/opt/.hz-d1523991e6ad79d9b91751e6/post-junit.xml ---
+=========================== short test summary info ============================
+FAILED scripts/solr_builder/tests/test_hz_d9c2dbd36a.py::test_hz_d9c2dbd36a
+===================== 1 failed, 6 passed, 3 rerun in 0.05s =====================

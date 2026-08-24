@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="1" hostname="6d63703ca169" name="pytest" skipped="0" tests="6" time="0.101" timestamp="2026-08-24T21:27:49.549440"><testcase classname="test.units.module_utils.basic.test_no_log.TestRemoveValues" file="test/units/module_utils/basic/test_no_log.py" line="127" name="test_strings_to_remove" time="0.005"><failure message="AssertionError: {&apos;one[133 chars]R&apos;, &apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;: [&apos;V[45 chars]&apos;]}]} != {&apos;one[133 chars]R&apos;, &apos;base&apos;: [&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAME[14 chars]&apos;]}]}
+  {&apos;one&apos;: 1,
+   &apos;three&apos;: [&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;,
+             &apos;musketeers&apos;,
+             None,
++            {&apos;base&apos;: [&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;, &apos;raquets&apos;],
+-            {&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;: [&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;,
+-                                                     &apos;raquets&apos;],
+              &apos;ping&apos;: &apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;}],
+   &apos;two&apos;: &apos;dos&apos;}">test/units/module_utils/basic/test_no_log.py:130: in test_strings_to_remove
+    self.assertEqual(remove_values(value, no_log_strings), expected)
+E   AssertionError: {&apos;one[133 chars]R&apos;, &apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;: [&apos;V[45 chars]&apos;]}]} != {&apos;one[133 chars]R&apos;, &apos;base&apos;: [&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAME[14 chars]&apos;]}]}
+E     {&apos;one&apos;: 1,
+E      &apos;three&apos;: [&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;,
+E                &apos;musketeers&apos;,
+E                None,
+E   +            {&apos;base&apos;: [&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;, &apos;raquets&apos;],
+E   -            {&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;: [&apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;,
+E   -                                                     &apos;raquets&apos;],
+E                 &apos;ping&apos;: &apos;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&apos;}],
+E      &apos;two&apos;: &apos;dos&apos;}</failure></testcase><testcase classname="test.units.module_utils.basic.test_no_log.TestReturnValues" file="test/units/module_utils/basic/test_no_log.py" line="47" name="test_unknown_type" time="0.001"></testcase><testcase classname="test.units.module_utils.basic.test_no_log.TestRemoveValues" file="test/units/module_utils/basic/test_no_log.py" line="123" name="test_no_removal" time="0.001"></testcase><testcase classname="test.units.module_utils.basic.test_no_log.TestReturnValues" file="test/units/module_utils/basic/test_no_log.py" line="43" name="test_return_datastructure_name" time="0.000"></testcase><testcase classname="test.units.module_utils.basic.test_no_log.TestRemoveValues" file="test/units/module_utils/basic/test_no_log.py" line="131" name="test_unknown_type" time="0.000"></testcase><testcase classname="test.units.module_utils.basic.test_no_log.TestRemoveValues" file="test/units/module_utils/basic/test_no_log.py" line="134" name="test_hit_recursion_limit" time="0.035"></testcase></testsuite></testsuites>

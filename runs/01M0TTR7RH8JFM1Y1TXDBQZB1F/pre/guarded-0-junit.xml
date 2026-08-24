@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="3" failures="0" hostname="6d63703ca169" name="pytest" skipped="0" tests="3" time="0.041" timestamp="2026-08-24T21:27:49.102998"><testcase classname="" file="test/units/module_utils/basic/test_sanitize_keys.py" name="test.units.module_utils.basic.test_sanitize_keys" time="0.000"><error message="collection failure">ImportError while importing test module &apos;/app/test/units/module_utils/basic/test_sanitize_keys.py&apos;.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+test/units/module_utils/basic/test_sanitize_keys.py:10: in &lt;module&gt;
+    from ansible.module_utils.basic import sanitize_keys
+E   ImportError: cannot import name &apos;sanitize_keys&apos; from &apos;ansible.module_utils.basic&apos; (/app/lib/ansible/module_utils/basic.py)</error><error message="collection failure">ImportError while importing test module &apos;/app/test/units/module_utils/basic/test_sanitize_keys.py&apos;.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+test/units/module_utils/basic/test_sanitize_keys.py:10: in &lt;module&gt;
+    from ansible.module_utils.basic import sanitize_keys
+E   ImportError: cannot import name &apos;sanitize_keys&apos; from &apos;ansible.module_utils.basic&apos; (/app/lib/ansible/module_utils/basic.py)</error><error message="collection failure">ImportError while importing test module &apos;/app/test/units/module_utils/basic/test_sanitize_keys.py&apos;.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+test/units/module_utils/basic/test_sanitize_keys.py:10: in &lt;module&gt;
+    from ansible.module_utils.basic import sanitize_keys
+E   ImportError: cannot import name &apos;sanitize_keys&apos; from &apos;ansible.module_utils.basic&apos; (/app/lib/ansible/module_utils/basic.py)</error></testcase></testsuite></testsuites>

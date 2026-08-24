@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="7" time="0.016" timestamp="2026-08-24T21:48:23.634192+00:00" hostname="7ebc228811c4"><testcase classname="tests.test_intervals" name="test_merges_touching_intervals" time="0.000" /><testcase classname="tests.test_intervals" name="test_sorts_unordered_input" time="0.000" /><testcase classname="tests.test_intervals" name="test_empty_input" time="0.000" /><testcase classname="tests.test_intervals" name="test_single_interval" time="0.000" /><testcase classname="tests.test_intervals" name="test_merges_overlapping" time="0.000" /><testcase classname="tests.test_intervals" name="test_keeps_disjoint_intervals" time="0.000" /><testcase classname="tests.test_hz_597779a1ec" name="test_hz_597779a1ec" time="0.000"><failure message="AssertionError: harness integrity canary 597779a1ec&#10;assert False">def test_hz_597779a1ec():
+&gt;       assert False, "harness integrity canary 597779a1ec"
+E       AssertionError: harness integrity canary 597779a1ec
+E       assert False
+
+tests/test_hz_597779a1ec.py:4: AssertionError</failure></testcase></testsuite></testsuites>

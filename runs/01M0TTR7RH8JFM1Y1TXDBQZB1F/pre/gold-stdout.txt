@@ -1,0 +1,46 @@
+$ python -m pytest test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_non_dict_types test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_with_ignores test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict --junitxml=/var/opt/.hz-a60814e7242acf45dc334834/gold-0-junit.xml
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 3 items
+
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_non_dict_types PASSED [ 33%]
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_with_ignores PASSED [ 66%]
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict PASSED [100%]
+
+=============================== warnings summary ===============================
+/usr/local/lib/python3.9/site-packages/_pytest/junitxml.py:417
+  /usr/local/lib/python3.9/site-packages/_pytest/junitxml.py:417: PytestDeprecationWarning: The 'junit_family' default value will change to 'xunit2' in pytest 6.0.
+  Add 'junit_family=xunit1' to your pytest.ini file to keep the current format in future versions of pytest and silence this warning.
+    _issue_warning_captured(deprecated.JUNIT_XML_DEFAULT_FAMILY, config.hook, 2)
+
+-- Docs: https://docs.pytest.org/en/latest/warnings.html
+-- generated xml file: /var/opt/.hz-a60814e7242acf45dc334834/gold-0-junit.xml --
+========================= 3 passed, 1 warning in 0.02s =========================
+
+$ python -m pytest test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit --junitxml=/var/opt/.hz-a60814e7242acf45dc334834/gold-1-junit.xml
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 6 items
+
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove PASSED [ 16%]
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type PASSED [ 33%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal PASSED [ 50%]
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name PASSED [ 66%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type PASSED [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit PASSED [100%]
+
+=============================== warnings summary ===============================
+/usr/local/lib/python3.9/site-packages/_pytest/junitxml.py:417
+  /usr/local/lib/python3.9/site-packages/_pytest/junitxml.py:417: PytestDeprecationWarning: The 'junit_family' default value will change to 'xunit2' in pytest 6.0.
+  Add 'junit_family=xunit1' to your pytest.ini file to keep the current format in future versions of pytest and silence this warning.
+    _issue_warning_captured(deprecated.JUNIT_XML_DEFAULT_FAMILY, config.hook, 2)
+
+-- Docs: https://docs.pytest.org/en/latest/warnings.html
+-- generated xml file: /var/opt/.hz-a60814e7242acf45dc334834/gold-1-junit.xml --
+========================= 6 passed, 1 warning in 0.08s =========================

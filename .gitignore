@@ -1,19 +1,22 @@
-runs/
+# Secrets and local config
 .env
-harness.db
+.venv/
+
+# Working notes, not deliverables
 CLAUDE.md
 docs/
-.venv/
-__pycache__/
 
-.DS_Store
-site/
-
-# All run evidence stays out of git for now. The submission artifact gets
-# committed deliberately, once the code is frozen.
+# Scratch from development runs. The three DELIVERABLE runs, their database,
+# and the rendered site ARE committed — a reviewer browses the results and
+# replays the cassettes from a clean clone with no API key.
+runs-archive/
+harness-archive.db
 artifacts/
 
 # No test may write run artifacts into a bundle: it pollutes the deliverable
 # and feeds hash_build_context, silently changing the environment cache key.
 examples/*/x/
 examples/*/*/x/
+
+__pycache__/
+.DS_Store

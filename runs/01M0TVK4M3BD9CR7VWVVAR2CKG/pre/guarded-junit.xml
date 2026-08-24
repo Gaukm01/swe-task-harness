@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="6" time="0.076" timestamp="2026-08-24T21:42:30.669430" hostname="71f5f6df2208"><testcase classname="scripts.solr_builder.tests.test_fn_to_cli.TestFnToCLI" name="test_lists" time="0.002"><failure message="ValueError: Unsupported type: list[int]">scripts/solr_builder/tests/test_fn_to_cli.py:56: in test_lists
+    cli = FnToCLI(fn)
+scripts/solr_builder/solr_builder/fn_to_cli.py:58: in __init__
+    arg_opts = self.type_to_argparse(annotations[arg])
+scripts/solr_builder/solr_builder/fn_to_cli.py:111: in type_to_argparse
+    raise ValueError(f'Unsupported type: {typ}')
+E   ValueError: Unsupported type: list[int]</failure></testcase><testcase classname="scripts.solr_builder.tests.test_fn_to_cli.TestFnToCLI" name="test_paths" time="0.002"><failure message="ValueError: Unsupported type: list[pathlib.Path]">scripts/solr_builder/tests/test_fn_to_cli.py:66: in test_paths
+    cli = FnToCLI(fn)
+scripts/solr_builder/solr_builder/fn_to_cli.py:58: in __init__
+    arg_opts = self.type_to_argparse(annotations[arg])
+scripts/solr_builder/solr_builder/fn_to_cli.py:100: in type_to_argparse
+    return FnToCLI.type_to_argparse(
+scripts/solr_builder/solr_builder/fn_to_cli.py:111: in type_to_argparse
+    raise ValueError(f'Unsupported type: {typ}')
+E   ValueError: Unsupported type: list[pathlib.Path]</failure></testcase><testcase classname="scripts.solr_builder.tests.test_fn_to_cli.TestFnToCLI" name="test_full_flow" time="0.001" /><testcase classname="scripts.solr_builder.tests.test_fn_to_cli.TestFnToCLI" name="test_parse_docs" time="0.000" /><testcase classname="scripts.solr_builder.tests.test_fn_to_cli.TestFnToCLI" name="test_type_to_argparse" time="0.000" /><testcase classname="scripts.solr_builder.tests.test_fn_to_cli.TestFnToCLI" name="test_is_optional" time="0.000" /></testsuite></testsuites>

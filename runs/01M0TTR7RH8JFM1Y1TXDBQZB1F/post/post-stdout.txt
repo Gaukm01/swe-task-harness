@@ -1,0 +1,89 @@
+$ python -m pytest test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_non_dict_types test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_with_ignores test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 --junitxml=/var/opt/.hz-621e336c747166b34826c29d/post-0-junit.xml
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 4 items
+
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_non_dict_types PASSED [ 25%]
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_with_ignores PASSED [ 50%]
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict RERUN [ 75%]
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict RERUN [ 75%]
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict RERUN [ 75%]
+test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict FAILED [ 75%]
+test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 RERUN [100%]
+test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 RERUN [100%]
+test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 RERUN [100%]
+test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________________ test_sanitize_keys_dict ____________________________
+test/units/module_utils/basic/test_sanitize_keys.py:75: in test_sanitize_keys_dict
+    _run_comparison(d)
+test/units/module_utils/basic/test_sanitize_keys.py:51: in _run_comparison
+    assert ret == expected
+E   AssertionError: assert [None, True, ..., [1, 2], ...] == [None, True, ..., [1, 2], ...]
+E     At index 6 diff: {'key1': ['value1a', 'value1b'], 'some-password': 'value-for-some-password', 'key2': {'key3': {'value3b', 'value3a'}, 'i-have-a-secret': {'secret-password': 'value-for-secret-password', 'key4': 'value4'}}} != {'key1': ['value1a', 'value1b'], 'some-********': 'value-for-some-password', 'key2': {'key3': {'value3b', 'value3a'}, 'i-have-a-********': {'********-********': 'value-for-secret-password', 'key4': 'value4'}}}
+E     Full diff:
+E       [
+E        None,
+E        True,
+E        100,
+E        'some string',...
+E     
+E     ...Full output truncated (16 lines hidden), use '-vv' to show
+______________________________ test_hz_5d085e10a6 ______________________________
+test/units/module_utils/basic/test_hz_5d085e10a6.py:4: in test_hz_5d085e10a6
+    assert False, "harness integrity canary 5d085e10a6"
+E   AssertionError: harness integrity canary 5d085e10a6
+E   assert False
+=============================== warnings summary ===============================
+/usr/local/lib/python3.9/site-packages/_pytest/junitxml.py:417
+  /usr/local/lib/python3.9/site-packages/_pytest/junitxml.py:417: PytestDeprecationWarning: The 'junit_family' default value will change to 'xunit2' in pytest 6.0.
+  Add 'junit_family=xunit1' to your pytest.ini file to keep the current format in future versions of pytest and silence this warning.
+    _issue_warning_captured(deprecated.JUNIT_XML_DEFAULT_FAMILY, config.hook, 2)
+
+-- Docs: https://docs.pytest.org/en/latest/warnings.html
+-- generated xml file: /var/opt/.hz-621e336c747166b34826c29d/post-0-junit.xml --
+=========================== short test summary info ============================
+FAILED test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict
+FAILED test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6
+=============== 2 failed, 2 passed, 1 warning, 6 rerun in 0.07s ================
+
+$ python -m pytest test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 --junitxml=/var/opt/.hz-621e336c747166b34826c29d/post-1-junit.xml
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 7 items
+
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove PASSED [ 14%]
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type PASSED [ 28%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal PASSED [ 42%]
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name PASSED [ 57%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type PASSED [ 71%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit PASSED [ 85%]
+test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 RERUN [100%]
+test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 RERUN [100%]
+test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 RERUN [100%]
+test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6 FAILED [100%]
+
+=================================== FAILURES ===================================
+______________________________ test_hz_5d085e10a6 ______________________________
+test/units/module_utils/basic/test_hz_5d085e10a6.py:4: in test_hz_5d085e10a6
+    assert False, "harness integrity canary 5d085e10a6"
+E   AssertionError: harness integrity canary 5d085e10a6
+E   assert False
+=============================== warnings summary ===============================
+/usr/local/lib/python3.9/site-packages/_pytest/junitxml.py:417
+  /usr/local/lib/python3.9/site-packages/_pytest/junitxml.py:417: PytestDeprecationWarning: The 'junit_family' default value will change to 'xunit2' in pytest 6.0.
+  Add 'junit_family=xunit1' to your pytest.ini file to keep the current format in future versions of pytest and silence this warning.
+    _issue_warning_captured(deprecated.JUNIT_XML_DEFAULT_FAMILY, config.hook, 2)
+
+-- Docs: https://docs.pytest.org/en/latest/warnings.html
+-- generated xml file: /var/opt/.hz-621e336c747166b34826c29d/post-1-junit.xml --
+=========================== short test summary info ============================
+FAILED test/units/module_utils/basic/test_hz_5d085e10a6.py::test_hz_5d085e10a6
+=============== 1 failed, 6 passed, 1 warning, 3 rerun in 0.11s ================

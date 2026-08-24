@@ -1,0 +1,95 @@
+{
+  "run_id": "01M0TVZD1RERXJJANSZ671V761",
+  "task_id": "tiny-fixture",
+  "bundle_digest": "f01257f067c72f5d6dccc17511101342d5e211a18db405acf393474e4b485f17",
+  "image": "harness/tiny-fixture:base-d2334557fafa",
+  "upstream_image": null,
+  "cache_key": "d2334557fafaa02d516125e73ef83514ed267a9276df74fd04d69402425a9604",
+  "base_commit": null,
+  "solver": {
+    "kind": "agent",
+    "model": "claude-sonnet-4-6",
+    "turns": 5,
+    "cost_usd": 0.032474,
+    "summary": "Fixed two bugs in `tinylib/intervals.py`:\n\n1. **Touching intervals now merged**: Changed the overlap condition from `start < last[1]` to `start <= last[1]`, so intervals that share an endpoint (e.g. `[1,2]` and `[2,3]`) are correctly combined into `[1,3]`.\n\n2. **Unordered input now handled**: Added `sorted_intervals = sorted(intervals)` before processing, so the walk always sees intervals in ascending-start order regardless of how the caller passed them. The original `intervals` list is never mutated.\n\nBoth existing tests continue to pass and both bug-report examples now return the expected results."
+  },
+  "outcome": "resolved",
+  "gaming_flags": [],
+  "summary": {
+    "f2p_fixed": 2,
+    "f2p_total": 2,
+    "p2p_regressed": 0,
+    "p2p_total": 4
+  },
+  "tests": [
+    {
+      "id": "tests/test_intervals.py::test_empty_input",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 0
+    },
+    {
+      "id": "tests/test_intervals.py::test_keeps_disjoint_intervals",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 0
+    },
+    {
+      "id": "tests/test_intervals.py::test_merges_overlapping",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 0
+    },
+    {
+      "id": "tests/test_intervals.py::test_merges_touching_intervals",
+      "bucket": "f2p",
+      "baseline": "failed",
+      "post": "passed",
+      "transition": "fixed",
+      "message": "assert [(1, 2), (2, 3)] == [(1, 3)]\n  \n  At index 0 diff: (1, 2) != (1, 3)\n  Left contains one more item: (2, 3)\n  Use -v to get more diff\ndef test_merges_touching_intervals():\n        # [1, 2] and [2, 3] share the endpoint 2, so they describe one continuous span.\n>       assert merge([(1, 2), (2, 3)]) == [(1, 3)]\nE       assert [(1, 2), (2, 3)] == [(1, 3)]\nE         \nE         At index 0 diff: (1, 2) != (1, 3)\nE         Left contains one more item: (2, 3)\nE         Use -v to get more diff\n\ntests/test_intervals.py:22: AssertionError",
+      "duration_ms": 0
+    },
+    {
+      "id": "tests/test_intervals.py::test_single_interval",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 0
+    },
+    {
+      "id": "tests/test_intervals.py::test_sorts_unordered_input",
+      "bucket": "f2p",
+      "baseline": "failed",
+      "post": "passed",
+      "transition": "fixed",
+      "message": "assert [(5, 6)] == [(1, 3), (5, 6)]\n  \n  At index 0 diff: (5, 6) != (1, 3)\n  Right contains one more item: (5, 6)\n  Use -v to get more diff\ndef test_sorts_unordered_input():\n>       assert merge([(5, 6), (1, 3)]) == [(1, 3), (5, 6)]\nE       assert [(5, 6)] == [(1, 3), (5, 6)]\nE         \nE         At index 0 diff: (5, 6) != (1, 3)\nE         Right contains one more item: (5, 6)\nE         Use -v to get more diff\n\ntests/test_intervals.py:26: AssertionError",
+      "duration_ms": 0
+    }
+  ],
+  "timings_ms": {
+    "setup": 0,
+    "validate": 2414,
+    "solve": 1614,
+    "grade": 1461
+  },
+  "artifacts": {
+    "solution_diff": "runs/01M0TVZD1RERXJJANSZ671V761/solution.diff",
+    "report_json": "runs/01M0TVZD1RERXJJANSZ671V761/report.json"
+  },
+  "notes": [],
+  "restored_test_count": 1,
+  "restored_test_paths": [
+    "tests/test_intervals.py"
+  ]
+}

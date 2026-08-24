@@ -1,0 +1,19 @@
+$ python -m pytest scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_lists scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_paths scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_full_flow scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_parse_docs scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_type_to_argparse scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_is_optional --junitxml=/var/opt/.hz-076fcfcfb680352499b1f65b/gold-junit.xml
+============================= test session starts ==============================
+platform linux -- Python 3.11.1, pytest-7.4.3, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pyproject.toml
+plugins: rerunfailures-15.1, anyio-4.10.0, asyncio-0.21.1, cov-4.1.0
+asyncio: mode=Mode.STRICT
+collecting ... collected 6 items
+
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_lists PASSED [ 16%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_paths PASSED [ 33%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_full_flow PASSED [ 50%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_parse_docs PASSED [ 66%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_type_to_argparse PASSED [ 83%]
+scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_is_optional PASSED [100%]
+
+--- generated xml file: /var/opt/.hz-076fcfcfb680352499b1f65b/gold-junit.xml ---
+============================== 6 passed in 0.03s ===============================

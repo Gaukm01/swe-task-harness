@@ -1,0 +1,1933 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ansible__ansible-bf98f03-3a812189a1133297f7f5468579283f86 · unresolved</title>
+<style>
+  /* Self-contained by design: a reviewer double-clicks a file and it works.
+     No CDN, no build step, no server. */
+  :root {
+    --bg: #ffffff; --fg: #1c1c1e; --muted: #6b6b70; --line: #e3e3e6;
+    --panel: #f7f7f8; --code: #f2f2f4;
+    --ok: #1a7f37; --bad: #b3261e; --warn: #9a6700; --info: #0b5cad;
+    --add: #e6ffec; --del: #ffebe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16171a; --fg: #e6e6e8; --muted: #9a9aa2; --line: #2c2d31;
+      --panel: #1d1e22; --code: #1a1b1f;
+      --ok: #4ac26b; --bad: #ff6b60; --warn: #d4a72c; --info: #6cb6ff;
+      --add: #12261e; --del: #2a1618;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 96px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 36px 0 12px; letter-spacing: -0.01em; }
+  a { color: var(--info); }
+  .muted { color: var(--muted); }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  tbody tr:hover { background: var(--panel); }
+  .scroll { overflow-x: auto; }
+  .badge {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .resolved { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+  .resolved_suspect { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .unresolved { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+  .inconclusive { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .incomplete { background: var(--panel); color: var(--muted); }
+  .fixed, .held, .passed { color: var(--ok); }
+  .still_failing, .regressed, .failed, .error, .collection_error, .not_found { color: var(--bad); }
+  .timeout, .infra_error, .skipped { color: var(--warn); }
+  .kv { display: grid; grid-template-columns: 160px 1fr; gap: 4px 16px; }
+  .kv dt { color: var(--muted); font-size: 13px; }
+  .kv dd { margin: 0; word-break: break-word; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+  .flags { border-left: 3px solid var(--warn); background: color-mix(in srgb, var(--warn) 8%, transparent); }
+  .flags li { margin: 4px 0; }
+  pre.block {
+    background: var(--code); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; overflow-x: auto; margin: 0;
+  }
+  details { border: 1px solid var(--line); border-radius: 8px; margin: 6px 0; background: var(--panel); }
+  details > summary { cursor: pointer; padding: 9px 14px; font-size: 13px; }
+  details[open] > summary { border-bottom: 1px solid var(--line); }
+  details .body { padding: 12px 14px; }
+  .diff span { display: block; white-space: pre-wrap; }
+  .diff .a { background: var(--add); }
+  .diff .d { background: var(--del); }
+  .diff .h { color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>
+    <span class="badge unresolved">unresolved</span>
+    ansible__ansible-bf98f03-3a812189a1133297f7f5468579283f86
+  </h1>
+  <div class="muted mono">01M0TTR7RH8JFM1Y1TXDBQZB1F · <a href="index.html">all runs</a></div>
+</header>
+
+
+
+<h2>Run</h2>
+<dl class="kv">
+  <dt>solver</dt><dd>agent</dd>
+<dt>turns</dt><dd class="num">44</dd><dt>cost</dt><dd class="num">$1.9550</dd>  <dt>bundle digest</dt><dd class="mono">5f207b61744aa974bf35ff7256be66f815455ae7509b4a18b11861e05aa1a6d4</dd>
+  <dt>image</dt><dd class="mono">harness/ansible__ansible-bf98f03-3a812189a1133297f7f5468579283f86:base-0e20cd17f68e</dd>
+<dt>instance</dt><dd><a href="https://huggingface.co/datasets/ScaleAI/SWE-bench_Pro/viewer/default/test?q=instance_ansible__ansible-bf98f031f3f5af31a2d78dc2f0a58fe92ebae0bb-v1055803c3a812189a1133297f7f5468579283f86">instance_ansible__ansible-bf98f031f3f5af31a2d78dc2f0a58fe92ebae0bb-v1055803c3a812189a1133297f7f5468579283f86</a></dd>  <dt>summary</dt>
+  <dd>
+    f2p fixed <span class="num">3/4</span> ·
+    p2p regressed <span class="num">0/5</span>
+  </dd>
+  <dt>timings</dt>
+  <dd class="num">setup 0ms · validate 6820ms · solve 809930ms · grade 4181ms</dd>
+</dl>
+
+<h2>Tests</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th>bucket</th><th>test</th><th>baseline</th><th>post</th><th>transition</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="mono">p2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit
+      </td>
+      <td class="passed">passed</td>
+      <td class="passed">passed</td>
+      <td class="held"><strong>held</strong></td>
+    </tr>
+    <tr>
+      <td class="mono">p2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal
+      </td>
+      <td class="passed">passed</td>
+      <td class="passed">passed</td>
+      <td class="held"><strong>held</strong></td>
+    </tr>
+    <tr>
+      <td class="mono">f2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove
+        <details><summary class="muted">failure message</summary>
+          <div class="body"><pre class="block">AssertionError: {&#39;one[133 chars]R&#39;, &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;: [&#39;V[45 chars]&#39;]}]} != {&#39;one[133 chars]R&#39;, &#39;base&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAME[14 chars]&#39;]}]}   {&#39;one&#39;: 1,    &#39;three&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;,              &#39;musketeers&#39;,              None, +            {&#39;base&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;, &#39;raquets&#39;], -            {&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;, -                                                     &#39;raquets&#39;],               &#39;ping&#39;: &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;}],    &#39;two&#39;: &#39;dos&#39;}
+test/units/module_utils/basic/test_no_log.py:130: in test_strings_to_remove
+    self.assertEqual(remove_values(value, no_log_strings), expected)
+E   AssertionError: {&#39;one[133 chars]R&#39;, &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;: [&#39;V[45 chars]&#39;]}]} != {&#39;one[133 chars]R&#39;, &#39;base&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAME[14 chars]&#39;]}]}
+E     {&#39;one&#39;: 1,
+E      &#39;three&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;,
+E                &#39;musketeers&#39;,
+E                None,
+E   +            {&#39;base&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;, &#39;raquets&#39;],
+E   -            {&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;,
+E   -                                                     &#39;raquets&#39;],
+E                 &#39;ping&#39;: &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;}],
+E      &#39;two&#39;: &#39;dos&#39;}</pre></div>
+        </details>
+      </td>
+      <td class="failed">failed</td>
+      <td class="passed">passed</td>
+      <td class="fixed"><strong>fixed</strong></td>
+    </tr>
+    <tr>
+      <td class="mono">p2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type
+      </td>
+      <td class="passed">passed</td>
+      <td class="passed">passed</td>
+      <td class="held"><strong>held</strong></td>
+    </tr>
+    <tr>
+      <td class="mono">p2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name
+      </td>
+      <td class="passed">passed</td>
+      <td class="passed">passed</td>
+      <td class="held"><strong>held</strong></td>
+    </tr>
+    <tr>
+      <td class="mono">p2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type
+      </td>
+      <td class="passed">passed</td>
+      <td class="passed">passed</td>
+      <td class="held"><strong>held</strong></td>
+    </tr>
+    <tr>
+      <td class="mono">f2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_dict
+        <details><summary class="muted">failure message</summary>
+          <div class="body"><pre class="block">AssertionError: assert [None, True, ..., [1, 2], ...] == [None, True, ..., [1, 2], ...]   At index 6 diff: {&#39;key1&#39;: [&#39;value1a&#39;, &#39;value1b&#39;], &#39;some-password&#39;: &#39;value-for-some-password&#39;, &#39;key2&#39;: {&#39;key3&#39;: {&#39;value3b&#39;, &#39;value3a&#39;}, &#39;i-have-a-secret&#39;: {&#39;secret-password&#39;: &#39;value-for-secret-password&#39;, &#39;key4&#39;: &#39;value4&#39;}}} != {&#39;key1&#39;: [&#39;value1a&#39;, &#39;value1b&#39;], &#39;some-********&#39;: &#39;value-for-some-password&#39;, &#39;key2&#39;: {&#39;key3&#39;: {&#39;value3b&#39;, &#39;value3a&#39;}, &#39;i-have-a-********&#39;: {&#39;********-********&#39;: &#39;value-for-secret-password&#39;, &#39;key4&#39;: &#39;value4&#39;}}}   Full diff:     [      None,      True,      100,      &#39;some string&#39;,...      ...Full output truncated (16 lines hidden), use &#39;-vv&#39; to show
+test/units/module_utils/basic/test_sanitize_keys.py:75: in test_sanitize_keys_dict
+    _run_comparison(d)
+test/units/module_utils/basic/test_sanitize_keys.py:51: in _run_comparison
+    assert ret == expected
+E   AssertionError: assert [None, True, ..., [1, 2], ...] == [None, True, ..., [1, 2], ...]
+E     At index 6 diff: {&#39;key1&#39;: [&#39;value1a&#39;, &#39;value1b&#39;], &#39;some-password&#39;: &#39;value-for-some-password&#39;, &#39;key2&#39;: {&#39;key3&#39;: {&#39;value3b&#39;, &#39;value3a&#39;}, &#39;i-have-a-secret&#39;: {&#39;secret-password&#39;: &#39;value-for-secret-password&#39;, &#39;key4&#39;: &#39;value4&#39;}}} != {&#39;key1&#39;: [&#39;value1a&#39;, &#39;value1b&#39;], &#39;some-********&#39;: &#39;value-for-some-password&#39;, &#39;key2&#39;: {&#39;key3&#39;: {&#39;value3b&#39;, &#39;value3a&#39;}, &#39;i-have-a-********&#39;: {&#39;********-********&#39;: &#39;value-for-secret-password&#39;, &#39;key4&#39;: &#39;value4&#39;}}}
+E     Full diff:
+E       [
+E        None,
+E        True,
+E        100,
+E        &#39;some string&#39;,...
+E     
+E     ...Full output truncated (16 lines hidden), use &#39;-vv&#39; to show</pre></div>
+        </details>
+      </td>
+      <td class="collection_error">collection_error</td>
+      <td class="failed">failed</td>
+      <td class="still_failing"><strong>still_failing</strong></td>
+    </tr>
+    <tr>
+      <td class="mono">f2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_non_dict_types
+        <details><summary class="muted">failure message</summary>
+          <div class="body"><pre class="block">test/units/module_utils/basic/test_sanitize_keys.py failed to import</pre></div>
+        </details>
+      </td>
+      <td class="collection_error">collection_error</td>
+      <td class="passed">passed</td>
+      <td class="fixed"><strong>fixed</strong></td>
+    </tr>
+    <tr>
+      <td class="mono">f2p</td>
+      <td class="mono">
+        test/units/module_utils/basic/test_sanitize_keys.py::test_sanitize_keys_with_ignores
+        <details><summary class="muted">failure message</summary>
+          <div class="body"><pre class="block">test/units/module_utils/basic/test_sanitize_keys.py failed to import</pre></div>
+        </details>
+      </td>
+      <td class="collection_error">collection_error</td>
+      <td class="passed">passed</td>
+      <td class="fixed"><strong>fixed</strong></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Agent trajectory</h2>
+<div class="muted" style="font-size:13px;margin-bottom:8px">
+  51 steps. Refused tool calls are shown, not hidden.
+</div>
+<details>
+  <summary>
+    <span class="mono muted">turn 0</span>
+    <strong>list_dir</strong>
+    <span class="muted">lib/ansible</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible&#34;
+}</pre><pre class="block" style="margin-top:8px">__init__.py
+__pycache__/
+_vendor/
+cli/
+collections/
+compat/
+config/
+constants.py
+context.py
+errors/
+executor/
+galaxy/
+inventory/
+module_utils/
+modules/
+parsing/
+playbook/
+plugins/
+release.py
+template/
+utils/
+vars/</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 0</span>
+    <strong>list_dir</strong>
+    <span class="muted">lib/ansible/module_utils</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils&#34;
+}</pre><pre class="block" style="margin-top:8px">__init__.py
+__pycache__/
+_text.py
+ansible_release.py
+api.py
+basic.py
+common/
+compat/
+connection.py
+csharp/
+distro/
+facts/
+json_utils.py
+parsing/
+powershell/
+pycompat24.py
+service.py
+six/
+splitter.py
+urls.py
+yumdnf.py</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 1</span>
+    <strong>run_bash</strong>
+    <span class="muted">grep -n &#34;remove_values\|no_log\|sanitize&#34; lib/ansible/module_utils/basic.py | he</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;grep -n \&#34;remove_values\\|no_log\\|sanitize\&#34; lib/ansible/module_utils/basic.py | head -80&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+161:    list_no_log_values,
+311:def _remove_values_conditions(value, no_log_strings, deferred_removals):
+313:    Helper function for :meth:`remove_values`.
+316:    :arg no_log_strings: set of strings which must be stripped out of any values
+325:        2. objects which are in no_log_strings are replaced with a placeholder
+350:        if native_str_value in no_log_strings:
+352:        for omit_me in no_log_strings:
+388:        if stringy_value in no_log_strings:
+390:        for omit_me in no_log_strings:
+402:def remove_values(value, no_log_strings):
+403:    &#34;&#34;&#34; Remove strings in no_log_strings from value.  If value is a container
+407:    no_log_strings = [to_native(s, errors=&#39;surrogate_or_strict&#39;) for s in no_log_strings]
+408:    new_value = _remove_values_conditions(value, no_log_strings, deferred_removals)
+414:                new_key = _remove_values_conditions(old_key, no_log_strings, deferred_removals)
+415:                new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)
+419:                new_elem = _remove_values_conditions(elem, no_log_strings, deferred_removals)
+430:def heuristic_log_sanitize(data, no_log_values=None):
+490:    if no_log_values:
+491:        output = remove_values(output, no_log_values)
+578:    def __init__(self, argument_spec, bypass_checks=False, no_log=False,
+596:        self.no_log = no_log
+632:            # Use exceptions here because it isn&#39;t safe to call fail_json until no_log is processed
+637:        self.no_log_values = set()
+638:        self._handle_no_log_values()
+680:        if not self.no_log:
+1423:    def _handle_no_log_values(self, spec=None, param=None):
+1430:            self.no_log_values.update(list_no_log_values(spec, param))
+1432:            self.fail_json(msg=&#34;Failure when processing no_log parameters. Module invocation will be hidden. &#34;
+1903:        if not self.no_log:
+1919:                journal_msg = remove_values(msg.decode(&#39;utf-8&#39;, &#39;replace&#39;), self.no_log_values)
+1922:          
+... [616 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 1</span>
+    <strong>run_bash</strong>
+    <span class="muted">find lib/ansible/modules -name &#34;uri.py&#34; 2&gt;/dev/null</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;find lib/ansible/modules -name \&#34;uri.py\&#34; 2&gt;/dev/null&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+lib/ansible/modules/uri.py</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 2</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/basic.py&#34;,
+  &#34;start_line&#34;: 300,
+  &#34;end_line&#34;: 440
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/basic.py: lines 300-440 of 2740
+   300      return super(cls, platform_cls).__new__(platform_cls)
+   301  
+   302  
+   303  def get_all_subclasses(cls):
+   304      &#34;&#34;&#34;**Deprecated**: Use ansible.module_utils.common._utils.get_all_subclasses instead&#34;&#34;&#34;
+   305      return list(_get_all_subclasses(cls))
+   306  
+   307  
+   308  # End compat shims
+   309  
+   310  
+   311  def _remove_values_conditions(value, no_log_strings, deferred_removals):
+   312      &#34;&#34;&#34;
+   313      Helper function for :meth:`remove_values`.
+   314  
+   315      :arg value: The value to check for strings that need to be stripped
+   316      :arg no_log_strings: set of strings which must be stripped out of any values
+   317      :arg deferred_removals: List which holds information about nested
+   318          containers that have to be iterated for removals.  It is passed into
+   319          this function so that more entries can be added to it if value is
+   320          a container type.  The format of each entry is a 2-tuple where the first
+   321          element is the ``value`` parameter and the second value is a new
+   322          container to copy the elements of ``value`` into once iterated.
+   323      :returns: if ``value`` is a scalar, returns ``value`` with two exceptions:
+   324          1. :class:`~datetime.datetime` objects which are changed into a string representation.
+   325          2. objects which are in no_log_strings are replaced with a placeholder
+   326              so that no sensitive data is leaked.
+   327          If ``value`` is a container type, returns a new empty container.
+   328  
+   329      ``deferred_removals`` is added to as a side-effect of this function.
+   330  
+   331      .. warning:: It is up to the caller to make sure the order in which value
+   332          is passed in is correct.  For instance, higher level containers need
+   333          to be passed in before lower level containers. For example, given
+   334          `
+... [5329 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 2</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/modules/uri.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/modules/uri.py&#34;
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/modules/uri.py: 750 lines
+     1  #!/usr/bin/python
+     2  # -*- coding: utf-8 -*-
+     3  
+     4  # Copyright: (c) 2013, Romeo Theriault &lt;romeot () hawaii.edu&gt;
+     5  # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+     6  
+     7  from __future__ import absolute_import, division, print_function
+     8  __metaclass__ = type
+     9  
+    10  
+    11  DOCUMENTATION = r&#39;&#39;&#39;
+    12  ---
+    13  module: uri
+    14  short_description: Interacts with webservices
+    15  description:
+    16    - Interacts with HTTP and HTTPS web services and supports Digest, Basic and WSSE
+    17      HTTP authentication mechanisms.
+    18    - For Windows targets, use the M(win_uri) module instead.
+    19  version_added: &#34;1.1&#34;
+    20  options:
+    21    url:
+    22      description:
+    23        - HTTP or HTTPS URL in the form (http|https)://host.domain[:port]/path
+    24      type: str
+    25      required: true
+    26    dest:
+    27      description:
+    28        - A path of where to download the file to (if desired). If I(dest) is a
+    29          directory, the basename of the file on the remote server will be used.
+    30      type: path
+    31    url_username:
+    32      description:
+    33        - A username for the module to use for Digest, Basic or WSSE authentication.
+    34      type: str
+    35      aliases: [ user ]
+    36    url_password:
+    37      description:
+    38        - A password for the module to use for Digest, Basic or WSSE authentication.
+    39      type: str
+    40      aliases: [ password ]
+    41    body:
+    42      description:
+    43        - The body of the http request/response to the web service. If C(body_format) is set
+    44          to &#39;json&#39; it will take an already formatted JSON string or convert a data structure
+    45          into JSON.
+    46        - If C(body_format) is set to &#39;form-urlencoded&#39; it will convert a dictionary
+    47          or list of tuples into an &#39;applicatio
+... [30858 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 3</span>
+    <strong>run_bash</strong>
+    <span class="muted">find test -name &#34;*.py&#34; | xargs grep -l &#34;remove_values\|sanitize_keys\|no_log&#34; 2&gt;</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;find test -name \&#34;*.py\&#34; | xargs grep -l \&#34;remove_values\\|sanitize_keys\\|no_log\&#34; 2&gt;/dev/null | head -20&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+test/support/integration/plugins/modules/azure_rm_webapp.py
+test/support/integration/plugins/modules/zabbix_host.py
+test/support/integration/plugins/modules/mysql_db.py
+test/support/integration/plugins/modules/postgresql_privs.py
+test/support/integration/plugins/modules/openssl_privatekey.py
+test/support/integration/plugins/modules/htpasswd.py
+test/support/integration/plugins/modules/openssl_csr.py
+test/support/integration/plugins/modules/vmware_guest.py
+test/support/integration/plugins/modules/azure_rm_mariadbserver.py
+test/support/integration/plugins/modules/azure_rm_webappslot.py
+test/support/integration/plugins/modules/zabbix_proxy.py
+test/support/integration/plugins/modules/mongodb_user.py
+test/support/integration/plugins/modules/synchronize.py
+test/support/integration/plugins/modules/mysql_user.py
+test/support/integration/plugins/modules/x509_crl.py
+test/support/integration/plugins/modules/mongodb_parameter.py
+test/support/integration/plugins/modules/postgresql_user.py
+test/support/integration/plugins/modules/openssl_certificate.py
+test/support/integration/plugins/modules/azure_rm_functionapp.py
+test/support/integration/plugins/module_utils/ec2.py</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 3</span>
+    <strong>run_bash</strong>
+    <span class="muted">find test -name &#34;*.py&#34; | xargs grep -l &#34;uri&#34; 2&gt;/dev/null | head -10</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;find test -name \&#34;*.py\&#34; | xargs grep -l \&#34;uri\&#34; 2&gt;/dev/null | head -10&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+test/support/integration/plugins/modules/ec2.py
+test/support/integration/plugins/modules/ec2_instance_info.py
+test/support/integration/plugins/modules/ec2_eni.py
+test/support/integration/plugins/modules/s3_bucket.py
+test/support/integration/plugins/modules/rabbitmq_plugin.py
+test/support/integration/plugins/modules/azure_rm_webapp.py
+test/support/integration/plugins/modules/ec2_eni_info.py
+test/support/integration/plugins/modules/zabbix_host.py
+test/support/integration/plugins/modules/openssl_privatekey.py
+test/support/integration/plugins/modules/aws_codebuild.py</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 4</span>
+    <strong>run_bash</strong>
+    <span class="muted">find test/units -name &#34;*.py&#34; | xargs grep -l &#34;remove_values\|sanitize_keys&#34; 2&gt;/d</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;find test/units -name \&#34;*.py\&#34; | xargs grep -l \&#34;remove_values\\|sanitize_keys\&#34; 2&gt;/dev/null&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+test/units/module_utils/basic/test_no_log.py</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 4</span>
+    <strong>run_bash</strong>
+    <span class="muted">find test/units -name &#34;*.py&#34; | xargs grep -l &#34;basic&#34; 2&gt;/dev/null | head -10</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;find test/units -name \&#34;*.py\&#34; | xargs grep -l \&#34;basic\&#34; 2&gt;/dev/null | head -10&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+test/units/parsing/test_mod_args.py
+test/units/utils/collection_loader/test_collection_loader.py
+test/units/utils/display/test_display.py
+test/units/errors/test_errors.py
+test/units/playbook/test_playbook.py
+test/units/playbook/test_task.py
+test/units/playbook/test_play.py
+test/units/modules/test_iptables.py
+test/units/modules/test_pip.py
+test/units/modules/conftest.py</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 5</span>
+    <strong>read_file</strong>
+    <span class="muted">test/units/module_utils/basic/test_no_log.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;test/units/module_utils/basic/test_no_log.py&#34;
+}</pre><pre class="block" style="margin-top:8px">test/units/module_utils/basic/test_no_log.py: 165 lines
+     1  # -*- coding: utf-8 -*-
+     2  # (c) 2015, Toshio Kuratomi &lt;tkuratomi@ansible.com&gt;
+     3  # (c) 2017, Ansible Project
+     4  # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+     5  
+     6  from __future__ import absolute_import, division, print_function
+     7  __metaclass__ = type
+     8  
+     9  from units.compat import unittest
+    10  
+    11  from ansible.module_utils.basic import remove_values
+    12  from ansible.module_utils.common.parameters import _return_datastructure_name
+    13  
+    14  
+    15  class TestReturnValues(unittest.TestCase):
+    16      dataset = (
+    17          (&#39;string&#39;, frozenset([&#39;string&#39;])),
+    18          (&#39;&#39;, frozenset()),
+    19          (1, frozenset([&#39;1&#39;])),
+    20          (1.0, frozenset([&#39;1.0&#39;])),
+    21          (False, frozenset()),
+    22          ([&#39;1&#39;, &#39;2&#39;, &#39;3&#39;], frozenset([&#39;1&#39;, &#39;2&#39;, &#39;3&#39;])),
+    23          ((&#39;1&#39;, &#39;2&#39;, &#39;3&#39;), frozenset([&#39;1&#39;, &#39;2&#39;, &#39;3&#39;])),
+    24          ({&#39;one&#39;: 1, &#39;two&#39;: &#39;dos&#39;}, frozenset([&#39;1&#39;, &#39;dos&#39;])),
+    25          (
+    26              {
+    27                  &#39;one&#39;: 1,
+    28                  &#39;two&#39;: &#39;dos&#39;,
+    29                  &#39;three&#39;: [
+    30                      &#39;amigos&#39;, &#39;musketeers&#39;, None, {
+    31                          &#39;ping&#39;: &#39;pong&#39;,
+    32                          &#39;base&#39;: (
+    33                              &#39;balls&#39;, &#39;raquets&#39;
+    34                          )
+    35                      }
+    36                  ]
+    37              },
+    38              frozenset([&#39;1&#39;, &#39;dos&#39;, &#39;amigos&#39;, &#39;musketeers&#39;, &#39;pong&#39;, &#39;balls&#39;, &#39;raquets&#39;])
+    39          ),
+    40          (u&#39;Toshio くらとみ&#39;, frozenset([&#39;Toshio くらとみ&#39;])),
+    41          (&#39;Toshio くらとみ&#39;, frozenset([&#39;Toshio くらとみ&#39;])),
+    42      )
+    43  
+    44      def test_return_datastructure_name(self):
+    45          for data, expected in self.dataset:
+    46              self.assertEqual(frozenset(_return_datastructure_na
+... [5694 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 6</span>
+    <strong>run_tests</strong>
+<span class="badge unresolved">error</span>    <span class="muted">[&#39;test/units/module_utils/basic/test_no_log.py&#39;]</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;selectors&#34;: [
+    &#34;test/units/module_utils/basic/test_no_log.py&#34;
+  ]
+}</pre><pre class="block" style="margin-top:8px">exit 4
+ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]
+__main__.py: error: unrecognized arguments: --no-header
+  inifile: None
+  rootdir: /app</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 6</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/basic.py&#34;,
+  &#34;start_line&#34;: 1,
+  &#34;end_line&#34;: 180
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/basic.py: lines 1-180 of 2740
+     1  # Copyright (c), Michael DeHaan &lt;michael.dehaan@gmail.com&gt;, 2012-2013
+     2  # Copyright (c), Toshio Kuratomi &lt;tkuratomi@ansible.com&gt; 2016
+     3  # Simplified BSD License (see licenses/simplified_bsd.txt or https://opensource.org/licenses/BSD-2-Clause)
+     4  
+     5  from __future__ import absolute_import, division, print_function
+     6  __metaclass__ = type
+     7  
+     8  FILE_ATTRIBUTES = {
+     9      &#39;A&#39;: &#39;noatime&#39;,
+    10      &#39;a&#39;: &#39;append&#39;,
+    11      &#39;c&#39;: &#39;compressed&#39;,
+    12      &#39;C&#39;: &#39;nocow&#39;,
+    13      &#39;d&#39;: &#39;nodump&#39;,
+    14      &#39;D&#39;: &#39;dirsync&#39;,
+    15      &#39;e&#39;: &#39;extents&#39;,
+    16      &#39;E&#39;: &#39;encrypted&#39;,
+    17      &#39;h&#39;: &#39;blocksize&#39;,
+    18      &#39;i&#39;: &#39;immutable&#39;,
+    19      &#39;I&#39;: &#39;indexed&#39;,
+    20      &#39;j&#39;: &#39;journalled&#39;,
+    21      &#39;N&#39;: &#39;inline&#39;,
+    22      &#39;s&#39;: &#39;zero&#39;,
+    23      &#39;S&#39;: &#39;synchronous&#39;,
+    24      &#39;t&#39;: &#39;notail&#39;,
+    25      &#39;T&#39;: &#39;blockroot&#39;,
+    26      &#39;u&#39;: &#39;undelete&#39;,
+    27      &#39;X&#39;: &#39;compressedraw&#39;,
+    28      &#39;Z&#39;: &#39;compresseddirty&#39;,
+    29  }
+    30  
+    31  # Ansible modules can be written in any language.
+    32  # The functions available here can be used to do many common tasks,
+    33  # to simplify development of Python modules.
+    34  
+    35  import __main__
+    36  import atexit
+    37  import errno
+    38  import datetime
+    39  import grp
+    40  import fcntl
+    41  import locale
+    42  import os
+    43  import pwd
+    44  import platform
+    45  import re
+    46  import select
+    47  import shlex
+    48  import shutil
+    49  import signal
+    50  import stat
+    51  import subprocess
+    52  import sys
+    53  import tempfile
+    54  import time
+    55  import traceback
+    56  import types
+    57  
+    58  from collections import deque
+    59  from itertools import chain, repeat
+    60  
+    61  try:
+    62      import syslog
+    63      HAS_SYSLOG = True
+    64  except ImportError:
+    65      HAS_SYSLOG = False
+    66  
+    67  try:
+    68     
+... [3966 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 7</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python -m pytest test/units/module_utils/basic/test_no_log.py -v 2&gt;&amp;1</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python -m pytest test/units/module_utils/basic/test_no_log.py -v 2&gt;&amp;1 | head -50&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 6 items
+
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name PASSED [ 16%]
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type PASSED [ 33%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit PASSED [ 50%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal PASSED [ 66%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove PASSED [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type PASSED [100%]
+
+============================== 6 passed in 0.07s ===============================</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 8</span>
+    <strong>run_bash</strong>
+    <span class="muted">grep -n &#34;list_no_log_values\|no_log_values&#34; lib/ansible/module_utils/common/para</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;grep -n \&#34;list_no_log_values\\|no_log_values\&#34; lib/ansible/module_utils/common/parameters.py | head -30&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+71:def list_no_log_values(argument_spec, params):
+82:    no_log_values = set()
+90:                    no_log_values.update(_return_datastructure_name(no_log_object))
+116:                        no_log_values.update(list_no_log_values(sub_argument_spec, sub_param))
+118:    return no_log_values</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 8</span>
+    <strong>run_bash</strong>
+    <span class="muted">find test/units -path &#34;*/modules/test_uri*&#34; 2&gt;/dev/null</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;find test/units -path \&#34;*/modules/test_uri*\&#34; 2&gt;/dev/null&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+(no output)</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 9</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/common/parameters.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/common/parameters.py&#34;,
+  &#34;start_line&#34;: 71,
+  &#34;end_line&#34;: 125
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/common/parameters.py: lines 71-125 of 197
+    71  def list_no_log_values(argument_spec, params):
+    72      &#34;&#34;&#34;Return set of no log values
+    73  
+    74      :arg argument_spec: An argument spec dictionary from a module
+    75      :arg params: Dictionary of all module parameters
+    76  
+    77      :returns: Set of strings that should be hidden from output::
+    78  
+    79          {&#39;secret_dict_value&#39;, &#39;secret_list_item_one&#39;, &#39;secret_list_item_two&#39;, &#39;secret_string&#39;}
+    80      &#34;&#34;&#34;
+    81  
+    82      no_log_values = set()
+    83      for arg_name, arg_opts in argument_spec.items():
+    84          if arg_opts.get(&#39;no_log&#39;, False):
+    85              # Find the value for the no_log&#39;d param
+    86              no_log_object = params.get(arg_name, None)
+    87  
+    88              if no_log_object:
+    89                  try:
+    90                      no_log_values.update(_return_datastructure_name(no_log_object))
+    91                  except TypeError as e:
+    92                      raise TypeError(&#39;Failed to convert &#34;%s&#34;: %s&#39; % (arg_name, to_native(e)))
+    93  
+    94          # Get no_log values from suboptions
+    95          sub_argument_spec = arg_opts.get(&#39;options&#39;)
+    96          if sub_argument_spec is not None:
+    97              wanted_type = arg_opts.get(&#39;type&#39;)
+    98              sub_parameters = params.get(arg_name)
+    99  
+   100              if sub_parameters is not None:
+   101                  if wanted_type == &#39;dict&#39; or (wanted_type == &#39;list&#39; and arg_opts.get(&#39;elements&#39;, &#39;&#39;) == &#39;dict&#39;):
+   102                      # Sub parameters can be a dict or list of dicts. Ensure parameters are always a list.
+   103                      if not isinstance(sub_parameters, list):
+   104                          sub_parameters = [sub_parameters]
+   105  
+   106                      for sub_param in sub_parameters:
+   107                          # Validate dict fields in case they came in as strings
+   108  
+   109   
+... [883 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 10</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/basic.py&#34;,
+  &#34;start_line&#34;: 402,
+  &#34;end_line&#34;: 500
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/basic.py: lines 402-500 of 2740
+   402  def remove_values(value, no_log_strings):
+   403      &#34;&#34;&#34; Remove strings in no_log_strings from value.  If value is a container
+   404      type, then remove a lot more&#34;&#34;&#34;
+   405      deferred_removals = deque()
+   406  
+   407      no_log_strings = [to_native(s, errors=&#39;surrogate_or_strict&#39;) for s in no_log_strings]
+   408      new_value = _remove_values_conditions(value, no_log_strings, deferred_removals)
+   409  
+   410      while deferred_removals:
+   411          old_data, new_data = deferred_removals.popleft()
+   412          if isinstance(new_data, Mapping):
+   413              for old_key, old_elem in old_data.items():
+   414                  new_key = _remove_values_conditions(old_key, no_log_strings, deferred_removals)
+   415                  new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)
+   416                  new_data[new_key] = new_elem
+   417          else:
+   418              for elem in old_data:
+   419                  new_elem = _remove_values_conditions(elem, no_log_strings, deferred_removals)
+   420                  if isinstance(new_data, MutableSequence):
+   421                      new_data.append(new_elem)
+   422                  elif isinstance(new_data, MutableSet):
+   423                      new_data.add(new_elem)
+   424                  else:
+   425                      raise TypeError(&#39;Unknown container type encountered when removing private values from output&#39;)
+   426  
+   427      return new_value
+   428  
+   429  
+   430  def heuristic_log_sanitize(data, no_log_values=None):
+   431      &#39;&#39;&#39; Remove strings that look like passwords from log messages &#39;&#39;&#39;
+   432      # Currently filters:
+   433      # user:pass@foo/whatever and http://username:pass@wherever/foo
+   434      # This code has false positives and consumes parts of logs that are
+   435      # not passwds
+   436  
+   437      # begin: start of a passwd containing string
+   438  
+... [2714 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 11</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/basic.py&#34;,
+  &#34;start_line&#34;: 311,
+  &#34;end_line&#34;: 430
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/basic.py: lines 311-430 of 2740
+   311  def _remove_values_conditions(value, no_log_strings, deferred_removals):
+   312      &#34;&#34;&#34;
+   313      Helper function for :meth:`remove_values`.
+   314  
+   315      :arg value: The value to check for strings that need to be stripped
+   316      :arg no_log_strings: set of strings which must be stripped out of any values
+   317      :arg deferred_removals: List which holds information about nested
+   318          containers that have to be iterated for removals.  It is passed into
+   319          this function so that more entries can be added to it if value is
+   320          a container type.  The format of each entry is a 2-tuple where the first
+   321          element is the ``value`` parameter and the second value is a new
+   322          container to copy the elements of ``value`` into once iterated.
+   323      :returns: if ``value`` is a scalar, returns ``value`` with two exceptions:
+   324          1. :class:`~datetime.datetime` objects which are changed into a string representation.
+   325          2. objects which are in no_log_strings are replaced with a placeholder
+   326              so that no sensitive data is leaked.
+   327          If ``value`` is a container type, returns a new empty container.
+   328  
+   329      ``deferred_removals`` is added to as a side-effect of this function.
+   330  
+   331      .. warning:: It is up to the caller to make sure the order in which value
+   332          is passed in is correct.  For instance, higher level containers need
+   333          to be passed in before lower level containers. For example, given
+   334          ``{&#39;level1&#39;: {&#39;level2&#39;: &#39;level3&#39;: [True]} }`` first pass in the
+   335          dictionary for ``level1``, then the dict for ``level2``, and finally
+   336          the list for ``level3``.
+   337      &#34;&#34;&#34;
+   338      if isinstance(value, (text_type, binary_type)):
+   339          # Need native str type
+   340          native_str_val
+... [4460 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 12</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/basic.py&#34;,
+  &#34;start_line&#34;: 56,
+  &#34;end_line&#34;: 65
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/basic.py: lines 56-65 of 2740
+    56  import types
+    57  
+    58  from collections import deque
+    59  from itertools import chain, repeat
+    60  
+    61  try:
+    62      import syslog
+    63      HAS_SYSLOG = True
+    64  except ImportError:
+    65      HAS_SYSLOG = False</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 13</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/basic.py&#34;,
+  &#34;start_line&#34;: 308,
+  &#34;end_line&#34;: 430
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/basic.py: lines 308-430 of 2740
+   308  # End compat shims
+   309  
+   310  
+   311  def _remove_values_conditions(value, no_log_strings, deferred_removals):
+   312      &#34;&#34;&#34;
+   313      Helper function for :meth:`remove_values`.
+   314  
+   315      :arg value: The value to check for strings that need to be stripped
+   316      :arg no_log_strings: set of strings which must be stripped out of any values
+   317      :arg deferred_removals: List which holds information about nested
+   318          containers that have to be iterated for removals.  It is passed into
+   319          this function so that more entries can be added to it if value is
+   320          a container type.  The format of each entry is a 2-tuple where the first
+   321          element is the ``value`` parameter and the second value is a new
+   322          container to copy the elements of ``value`` into once iterated.
+   323      :returns: if ``value`` is a scalar, returns ``value`` with two exceptions:
+   324          1. :class:`~datetime.datetime` objects which are changed into a string representation.
+   325          2. objects which are in no_log_strings are replaced with a placeholder
+   326              so that no sensitive data is leaked.
+   327          If ``value`` is a container type, returns a new empty container.
+   328  
+   329      ``deferred_removals`` is added to as a side-effect of this function.
+   330  
+   331      .. warning:: It is up to the caller to make sure the order in which value
+   332          is passed in is correct.  For instance, higher level containers need
+   333          to be passed in before lower level containers. For example, given
+   334          ``{&#39;level1&#39;: {&#39;level2&#39;: &#39;level3&#39;: [True]} }`` first pass in the
+   335          dictionary for ``level1``, then the dict for ``level2``, and finally
+   336          the list for ``level3``.
+   337      &#34;&#34;&#34;
+   338      if isinstance(value, (text_type, binary_type)):
+   339          # Need n
+... [4505 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 14</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/basic.py&#34;,
+  &#34;start_line&#34;: 2080,
+  &#34;end_line&#34;: 2100
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/basic.py: lines 2080-2100 of 2740
+  2080                      else:
+  2081                          self.deprecate(d)  # pylint: disable=ansible-deprecated-no-version
+  2082              else:
+  2083                  self.deprecate(kwargs[&#39;deprecations&#39;])  # pylint: disable=ansible-deprecated-no-version
+  2084  
+  2085          deprecations = get_deprecation_messages()
+  2086          if deprecations:
+  2087              kwargs[&#39;deprecations&#39;] = deprecations
+  2088  
+  2089          kwargs = remove_values(kwargs, self.no_log_values)
+  2090          print(&#39;\n%s&#39; % self.jsonify(kwargs))
+  2091  
+  2092      def exit_json(self, **kwargs):
+  2093          &#39;&#39;&#39; return from the module, without error &#39;&#39;&#39;
+  2094  
+  2095          self.do_cleanup_files()
+  2096          self._return_formatted(kwargs)
+  2097          sys.exit(0)
+  2098  
+  2099      def fail_json(self, msg, **kwargs):
+  2100          &#39;&#39;&#39; return from the module, with an error message &#39;&#39;&#39;</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 15</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/module_utils/basic.py&#34;,
+  &#34;start_line&#34;: 305,
+  &#34;end_line&#34;: 312
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/module_utils/basic.py: lines 305-312 of 2740
+   305      return list(_get_all_subclasses(cls))
+   306  
+   307  
+   308  # End compat shims
+   309  
+   310  
+   311  def _remove_values_conditions(value, no_log_strings, deferred_removals):
+   312      &#34;&#34;&#34;</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 16</span>
+    <strong>run_bash</strong>
+    <span class="muted">sed -n &#39;400,430p&#39; lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;sed -n &#39;400,430p&#39; lib/ansible/module_utils/basic.py&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+def remove_values(value, no_log_strings):
+    &#34;&#34;&#34; Remove strings in no_log_strings from value.  If value is a container
+    type, then remove a lot more&#34;&#34;&#34;
+    deferred_removals = deque()
+
+    no_log_strings = [to_native(s, errors=&#39;surrogate_or_strict&#39;) for s in no_log_strings]
+    new_value = _remove_values_conditions(value, no_log_strings, deferred_removals)
+
+    while deferred_removals:
+        old_data, new_data = deferred_removals.popleft()
+        if isinstance(new_data, Mapping):
+            for old_key, old_elem in old_data.items():
+                new_key = _remove_values_conditions(old_key, no_log_strings, deferred_removals)
+                new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)
+                new_data[new_key] = new_elem
+        else:
+            for elem in old_data:
+                new_elem = _remove_values_conditions(elem, no_log_strings, deferred_removals)
+                if isinstance(new_data, MutableSequence):
+                    new_data.append(new_elem)
+                elif isinstance(new_data, MutableSet):
+                    new_data.add(new_elem)
+                else:
+                    raise TypeError(&#39;Unknown container type encountered when removing private values from output&#39;)
+
+    return new_value
+
+
+def heuristic_log_sanitize(data, no_log_values=None):</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 17</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python3 -c &#34;
+content = open(&#39;lib/ansible/module_utils/basic.py&#39;).read</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python3 -c \&#34;\ncontent = open(&#39;lib/ansible/module_utils/basic.py&#39;).read()\n\n# Fix remove_values: change the mapping loop to NOT sanitize keys\nold_mapping_loop = &#39;&#39;&#39;        if isinstance(new_data, Mapping):\n            for old_key, old_elem in old_data.items():\n                new_key = _remove_values_conditions(old_key, no_log_strings, deferred_removals)\n                new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)\n                new_data[new_key] = n... [505 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+replace_remove_values: OK</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 18</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python3 -c &#34;
+content = open(&#39;lib/ansible/module_utils/basic.py&#39;).read</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python3 -c \&#34;\ncontent = open(&#39;lib/ansible/module_utils/basic.py&#39;).read()\n\n# Find insertion point (after the return new_value in remove_values, before heuristic_log_sanitize)\nold_text = &#39;&#39;&#39;    return new_value\n\n\ndef heuristic_log_sanitize(data, no_log_values=None):&#39;&#39;&#39;\n\nnew_text = &#39;&#39;&#39;    return new_value\n\n\ndef _new_sanitize_container(value, deferred):\n    \\\&#34;\\\&#34;\\\&#34;\n    Helper for :func:\\`sanitize_keys\\`.\n\n    If *value* is a container (Mapping, MutableSequence, generic Sequence, or\n    Set)... [4191 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+add_sanitize_keys: OK</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 19</span>
+    <strong>run_bash</strong>
+    <span class="muted">sed -n &#39;400,560p&#39; lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;sed -n &#39;400,560p&#39; lib/ansible/module_utils/basic.py&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+def remove_values(value, no_log_strings):
+    &#34;&#34;&#34; Remove strings in no_log_strings from value.  If value is a container
+    type, then remove a lot more&#34;&#34;&#34;
+    deferred_removals = deque()
+
+    no_log_strings = [to_native(s, errors=&#39;surrogate_or_strict&#39;) for s in no_log_strings]
+    new_value = _remove_values_conditions(value, no_log_strings, deferred_removals)
+
+    while deferred_removals:
+        old_data, new_data = deferred_removals.popleft()
+        if isinstance(new_data, Mapping):
+            for old_key, old_elem in old_data.items():
+                new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)
+                new_data[old_key] = new_elem
+        else:
+            for elem in old_data:
+                new_elem = _remove_values_conditions(elem, no_log_strings, deferred_removals)
+                if isinstance(new_data, MutableSequence):
+                    new_data.append(new_elem)
+                elif isinstance(new_data, MutableSet):
+                    new_data.add(new_elem)
+                else:
+                    raise TypeError(&#39;Unknown container type encountered when removing private values from output&#39;)
+
+    return new_value
+
+
+def _new_sanitize_container(value, deferred):
+    &#34;&#34;&#34;
+    Helper for :func:`sanitize_keys`.
+
+    If *value* is a container (Mapping, MutableSequence, generic Sequence, or
+    Set) a new, empty container of the appropriate type is created, the
+    *(old, new)* pair is appended to *deferred* so that the main loop can fill
+    it in later, and the new container is returned.  All other values are
+    returned unchanged.
+
+    :arg value: The value to inspect.
+    :arg deferred: A deque to which container pairs are appended.
+    :returns: A new empty container, or *value* itself for scalars.
+    &#34;&#34;&#34;
+    if isinstance(value, Mapping):
+        new_value = type(value)() if isinstance(value, MutableMapping) else {}
+        deferred.append((value, new_value))
+        return new_value
+    if isinsta
+... [4463 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 20</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python3 -c &#34;
+content = open(&#39;lib/ansible/modules/uri.py&#39;).read()
+
+# 1</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python3 -c \&#34;\ncontent = open(&#39;lib/ansible/modules/uri.py&#39;).read()\n\n# 1. Update the import to include sanitize_keys\nold_import = &#39;from ansible.module_utils.basic import AnsibleModule&#39;\nnew_import = &#39;from ansible.module_utils.basic import AnsibleModule, sanitize_keys&#39;\nassert old_import in content, &#39;Import line not found!&#39;\ncontent = content.replace(old_import, new_import)\nprint(&#39;import fix: OK&#39;)\n\n# 2. Add NO_MODIFY_KEYS constant after the JSON_CANDIDATES line\nold_candidates = \\\&#34;JSON_CANDID... [528 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+import fix: OK
+NO_MODIFY_KEYS: OK</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 21</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/modules/uri.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/modules/uri.py&#34;,
+  &#34;start_line&#34;: &#34;[735, 760]&#34;
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/modules/uri.py: 756 lines
+     1  #!/usr/bin/python
+     2  # -*- coding: utf-8 -*-
+     3  
+     4  # Copyright: (c) 2013, Romeo Theriault &lt;romeot () hawaii.edu&gt;
+     5  # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+     6  
+     7  from __future__ import absolute_import, division, print_function
+     8  __metaclass__ = type
+     9  
+    10  
+    11  DOCUMENTATION = r&#39;&#39;&#39;
+    12  ---
+    13  module: uri
+    14  short_description: Interacts with webservices
+    15  description:
+    16    - Interacts with HTTP and HTTPS web services and supports Digest, Basic and WSSE
+    17      HTTP authentication mechanisms.
+    18    - For Windows targets, use the M(win_uri) module instead.
+    19  version_added: &#34;1.1&#34;
+    20  options:
+    21    url:
+    22      description:
+    23        - HTTP or HTTPS URL in the form (http|https)://host.domain[:port]/path
+    24      type: str
+    25      required: true
+    26    dest:
+    27      description:
+    28        - A path of where to download the file to (if desired). If I(dest) is a
+    29          directory, the basename of the file on the remote server will be used.
+    30      type: path
+    31    url_username:
+    32      description:
+    33        - A username for the module to use for Digest, Basic or WSSE authentication.
+    34      type: str
+    35      aliases: [ user ]
+    36    url_password:
+    37      description:
+    38        - A password for the module to use for Digest, Basic or WSSE authentication.
+    39      type: str
+    40      aliases: [ password ]
+    41    body:
+    42      description:
+    43        - The body of the http request/response to the web service. If C(body_format) is set
+    44          to &#39;json&#39; it will take an already formatted JSON string or convert a data structure
+    45          into JSON.
+    46        - If C(body_format) is set to &#39;form-urlencoded&#39; it will convert a dictionary
+    47          or list of tuples into an &#39;applicatio
+... [31119 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 22</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python3 -c &#34;
+content = open(&#39;lib/ansible/modules/uri.py&#39;).read()
+
+# A</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python3 -c \&#34;\ncontent = open(&#39;lib/ansible/modules/uri.py&#39;).read()\n\n# Add sanitize_keys call before the final status check\nold_final = &#39;&#39;&#39;    if resp[\\&#39;status\\&#39;] not in status_code:\n        uresp[\\&#39;msg\\&#39;] = \\&#39;Status code was %s and not %s: %s\\&#39; % (resp[\\&#39;status\\&#39;], status_code, uresp.get(\\&#39;msg\\&#39;, \\&#39;\\&#39;))\n        if return_content:\n            module.fail_json(content=u_content, **uresp)\n        else:\n            module.fail_json(**uresp)\n    elif return_content:\n        module.exit_json(... [816 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+sanitize_keys call: OK</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 23</span>
+    <strong>write_file</strong>
+<span class="badge resolved_suspect">refused</span>
+    <span class="muted">test/units/module_utils/basic/test_no_log.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;test/units/module_utils/basic/test_no_log.py&#34;,
+  &#34;content&#34;: &#34;# -*- coding: utf-8 -*-\n# (c) 2015, Toshio Kuratomi &lt;tkuratomi@ansible.com&gt;\n# (c) 2017, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\nfrom __future__ import absolute_import, division, print_function\n__metaclass__ = type\n\nfrom units.compat import unittest\n\nfrom ansible.module_utils.basic import remove_values, sanitize_keys\nfrom ansible.module_utils.common.parameters import _return_datastructure_name\n\n\nclass TestReturnValues(unittest.... [14814 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">refused: test/units/module_utils/basic/test_no_log.py is a test file. Tests are restored before grading, so editing them cannot help. Change the source instead.</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 24</span>
+    <strong>run_bash</strong>
+    <span class="muted">sed -n &#39;410,428p&#39; lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;sed -n &#39;410,428p&#39; lib/ansible/module_utils/basic.py&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+while deferred_removals:
+        old_data, new_data = deferred_removals.popleft()
+        if isinstance(new_data, Mapping):
+            for old_key, old_elem in old_data.items():
+                new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)
+                new_data[old_key] = new_elem
+        else:
+            for elem in old_data:
+                new_elem = _remove_values_conditions(elem, no_log_strings, deferred_removals)
+                if isinstance(new_data, MutableSequence):
+                    new_data.append(new_elem)
+                elif isinstance(new_data, MutableSet):
+                    new_data.add(new_elem)
+                else:
+                    raise TypeError(&#39;Unknown container type encountered when removing private values from output&#39;)
+
+    return new_value</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 25</span>
+    <strong>run_bash</strong>
+<span class="badge unresolved">error</span>    <span class="muted">cd /app &amp;&amp; python -m pytest test/units/module_utils/basic/test_no_log.py -v 2&gt;&amp;1</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python -m pytest test/units/module_utils/basic/test_no_log.py -v 2&gt;&amp;1&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 1
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 6 items
+
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name PASSED [ 16%]
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type PASSED [ 33%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit PASSED [ 50%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal PASSED [ 66%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove RERUN [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove RERUN [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove RERUN [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove FAILED [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type PASSED [100%]
+
+=================================== FAILURES ===================================
+___________________ TestRemoveValues.test_strings_to_remove ____________________
+test/units/module_utils/basic/test_no_log.py:135: in test_strings_to_remove
+    self.assertEqual(remove_values(value, no_log_strings), expected)
+E   AssertionError: {&#39;one[133 chars]R&#39;, &#39;base&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAME[14 chars]&#39;]}]} != {&#39;one[133 chars]R&#39;, &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;: [&#39;V[45 chars]&#39;]}]}
+E     {&#39;one&#39;: 1,
+E      &#39;three&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;,
+E                &#39;musketeers&#39;,
+E                None,
+E   -            {&#39;base&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;, &#39;raquets&#39;],
+E   +            {&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;: [&#39;VALUE_SPECIFIED
+... [436 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 26</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python3 -c &#34;
+from ansible.module_utils.basic import sanitize_keys, re</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python3 -c \&#34;\nfrom ansible.module_utils.basic import sanitize_keys, remove_values\n\n# Test sanitize_keys basic functionality\nprint(&#39;=== sanitize_keys tests ===&#39;)\n\n# 1. Non-mapping objects should be returned unchanged\nfor obj in [&#39;string&#39;, 42, True, None, {1, 2}, [1, 2], (1, 2)]:\n    result = sanitize_keys(obj, frozenset([&#39;password&#39;]))\n    assert result is obj, f&#39;Expected {obj!r} to be returned unchanged, got {result!r}&#39;\nprint(&#39;PASS: non-mapping passthrough&#39;)\n\n# 2. Empty no_log_strings\no... [3306 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+=== sanitize_keys tests ===
+PASS: non-mapping passthrough
+PASS: empty no_log_strings returns obj unchanged
+PASS: exact key match -&gt; sentinel
+PASS: substring match -&gt; asterisks
+PASS: ignore_keys preserves exact matches
+PASS: _ansible prefix preserved
+PASS: nested mapping recursion
+PASS: list value with nested mapping
+PASS: values not modified
+PASS: NO_MODIFY_KEYS scenario
+
+=== remove_values tests (keys should NOT be altered) ===
+PASS: remove_values does NOT alter key names
+PASS: remove_values still sanitizes string values
+
+All tests passed!</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 27</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python3 -c &#34;
+from ansible.module_utils.basic import sanitize_keys
+
+# </span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python3 -c \&#34;\nfrom ansible.module_utils.basic import sanitize_keys\n\n# Test deep nesting doesn&#39;t hit recursion limit\nobj = {}\ninner = obj\nfor _ in range(5000):\n    next_level = {}\n    inner[&#39;nested&#39;] = next_level\n    inner = next_level\ninner[&#39;password&#39;] = &#39;secret&#39;\n\nresult = sanitize_keys(obj, frozenset([&#39;password&#39;]))\ncursor = result\ndepth = 0\nwhile &#39;nested&#39; in cursor:\n    cursor = cursor[&#39;nested&#39;]\n    depth += 1\nprint(f&#39;Depth: {depth}&#39;)\nassert depth == 5000\nassert &#39;VALUE_SPECIFIED_IN_NO... [86 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+Depth: 5000
+PASS: deep nesting works without recursion error</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 28</span>
+    <strong>read_file</strong>
+    <span class="muted">lib/ansible/modules/uri.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;path&#34;: &#34;lib/ansible/modules/uri.py&#34;,
+  &#34;start_line&#34;: &#34;[386, 402]&#34;
+}</pre><pre class="block" style="margin-top:8px">lib/ansible/modules/uri.py: 759 lines
+     1  #!/usr/bin/python
+     2  # -*- coding: utf-8 -*-
+     3  
+     4  # Copyright: (c) 2013, Romeo Theriault &lt;romeot () hawaii.edu&gt;
+     5  # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+     6  
+     7  from __future__ import absolute_import, division, print_function
+     8  __metaclass__ = type
+     9  
+    10  
+    11  DOCUMENTATION = r&#39;&#39;&#39;
+    12  ---
+    13  module: uri
+    14  short_description: Interacts with webservices
+    15  description:
+    16    - Interacts with HTTP and HTTPS web services and supports Digest, Basic and WSSE
+    17      HTTP authentication mechanisms.
+    18    - For Windows targets, use the M(win_uri) module instead.
+    19  version_added: &#34;1.1&#34;
+    20  options:
+    21    url:
+    22      description:
+    23        - HTTP or HTTPS URL in the form (http|https)://host.domain[:port]/path
+    24      type: str
+    25      required: true
+    26    dest:
+    27      description:
+    28        - A path of where to download the file to (if desired). If I(dest) is a
+    29          directory, the basename of the file on the remote server will be used.
+    30      type: path
+    31    url_username:
+    32      description:
+    33        - A username for the module to use for Digest, Basic or WSSE authentication.
+    34      type: str
+    35      aliases: [ user ]
+    36    url_password:
+    37      description:
+    38        - A password for the module to use for Digest, Basic or WSSE authentication.
+    39      type: str
+    40      aliases: [ password ]
+    41    body:
+    42      description:
+    43        - The body of the http request/response to the web service. If C(body_format) is set
+    44          to &#39;json&#39; it will take an already formatted JSON string or convert a data structure
+    45          into JSON.
+    46        - If C(body_format) is set to &#39;form-urlencoded&#39; it will convert a dictionary
+    47          or list of tuples into an &#39;applicatio
+... [31248 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 29</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python -m pytest test/units/module_utils/ -v 2&gt;&amp;1 | tail -40</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python -m pytest test/units/module_utils/ -v 2&gt;&amp;1 | tail -40&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+return httplib.HTTPSConnection(host, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/latest/warnings.html
+=========================== short test summary info ============================
+FAILED test/units/module_utils/basic/test_argument_spec.py::test_no_log_false[stdin0]
+FAILED test/units/module_utils/basic/test_deprecate_warn.py::test_warn[stdin0]
+FAILED test/units/module_utils/basic/test_deprecate_warn.py::test_deprecate[stdin0]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_exit_json_exits[args0-expected0-stdin0]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_exit_json_exits[args1-expected1-stdin1]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_exit_json_exits[args2-expected2-stdin2]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_exit_json_exits[args3-expected3-stdin3]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_exit_json_exits[args4-expected4-stdin4]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_exit_json_exits[args5-expected5-stdin5]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_exits[args0-expected0-stdin0]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_exits[args1-expected1-stdin1]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_exits[args2-expected2-stdin2]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_exits[args3-expected3-stdin3]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_exits[args4-expected4-stdin4]
+FAILED test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_msg_positional[stdin0]
+FAILED test/units/module_util
+... [2329 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 30</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; git stash &amp;&amp; python -m pytest test/units/module_utils/basic/test_exit</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; git stash &amp;&amp; python -m pytest test/units/module_utils/basic/test_exit_json.py test/units/module_utils/common/warnings/ -v 2&gt;&amp;1 | tail -20&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+Saved working directory and index state WIP on main: 169e3ef base snapshot
+E        &#39;Second warning&#39;,
+E        &#39;Third warning&#39;,
+E       ]
+__________________________ test_get_warning_messages ___________________________
+test/units/module_utils/common/warnings/test_warn.py:43: in test_get_warning_messages
+    assert len(accessor_warnings) == 3
+E   assert 25 == 3
+E     +25
+E     -3
+=========================== short test summary info ============================
+FAILED test/units/module_utils/common/warnings/test_deprecate.py::test_deprecate_with_collection
+FAILED test/units/module_utils/common/warnings/test_deprecate.py::test_deprecate_with_version
+FAILED test/units/module_utils/common/warnings/test_deprecate.py::test_deprecate_with_version_and_collection
+FAILED test/units/module_utils/common/warnings/test_deprecate.py::test_deprecate_with_date
+FAILED test/units/module_utils/common/warnings/test_deprecate.py::test_deprecate_with_date_and_collection
+FAILED test/units/module_utils/common/warnings/test_deprecate.py::test_multiple_deprecations
+FAILED test/units/module_utils/common/warnings/test_deprecate.py::test_get_deprecation_messages
+FAILED test/units/module_utils/common/warnings/test_warn.py::test_multiple_warningss
+FAILED test/units/module_utils/common/warnings/test_warn.py::test_get_warning_messages
+==================== 9 failed, 38 passed, 27 rerun in 0.24s ====================</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 31</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; git stash pop</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; git stash pop&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+On branch main
+Changes not staged for commit:
+  (use &#34;git add &lt;file&gt;...&#34; to update what will be committed)
+  (use &#34;git restore &lt;file&gt;...&#34; to discard changes in working directory)
+	modified:   lib/ansible/module_utils/basic.py
+	modified:   lib/ansible/modules/uri.py
+
+no changes added to commit (use &#34;git add&#34; and/or &#34;git commit -a&#34;)
+Dropped refs/stash@{0} (b008e70e625fc795c33a960f43565b967a4e4be7)</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 32</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; git stash &amp;&amp; python -m pytest test/units/module_utils/basic/test_exit</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; git stash &amp;&amp; python -m pytest test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved -v 2&gt;&amp;1 | tail -20&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+Saved working directory and index state WIP on main: 169e3ef base snapshot
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 6 items
+
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am0-stdin0-return_val0-expected0] PASSED [ 16%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am1-stdin1-return_val1-expected1] PASSED [ 33%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am2-stdin2-return_val2-expected2] PASSED [ 50%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am0-stdin0-return_val0-expected0] PASSED [ 66%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am1-stdin1-return_val1-expected1] PASSED [ 83%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am2-stdin2-return_val2-expected2] PASSED [100%]
+
+============================== 6 passed in 0.04s ===============================</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 33</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; git stash pop &amp;&amp; python -m pytest test/units/module_utils/basic/test_</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; git stash pop &amp;&amp; python -m pytest test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved -v 2&gt;&amp;1 | tail -30&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+On branch main
+Changes not staged for commit:
+  (use &#34;git add &lt;file&gt;...&#34; to update what will be committed)
+  (use &#34;git restore &lt;file&gt;...&#34; to discard changes in working directory)
+	modified:   lib/ansible/module_utils/basic.py
+	modified:   lib/ansible/modules/uri.py
+
+no changes added to commit (use &#34;git add&#34; and/or &#34;git commit -a&#34;)
+Dropped refs/stash@{0} (f9e65557b215147f53cd90799321ff8ff9dae32a)
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 6 items
+
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am0-stdin0-return_val0-expected0] PASSED [ 16%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am1-stdin1-return_val1-expected1] PASSED [ 33%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am2-stdin2-return_val2-expected2] PASSED [ 50%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am0-stdin0-return_val0-expected0] PASSED [ 66%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am1-stdin1-return_val1-expected1] PASSED [ 83%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am2-stdin2-return_val2-expected2] PASSED [100%]
+
+============================== 6 passed in 0.04s ===============================</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 34</span>
+    <strong>run_bash</strong>
+    <span class="muted">grep -n &#34;remove_values\|no_log\|key\|password&#34; test/units/module_utils/basic/tes</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;grep -n \&#34;remove_values\\|no_log\\|key\\|password\&#34; test/units/module_utils/basic/test_exit_json.py | head -40&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+106:    Test that ExitJson and FailJson remove password-like values
+112:            dict(username=&#39;person&#39;, password=&#39;$ecret k3y&#39;),
+113:            dict(one=1, pwd=&#39;$ecret k3y&#39;, url=&#39;https://username:password12345@foo.com/login/&#39;,
+115:            dict(one=1, pwd=OMIT, url=&#39;https://username:password12345@foo.com/login/&#39;,
+117:                 invocation=dict(module_args=dict(password=OMIT, token=None, username=&#39;person&#39;))),
+120:            dict(username=&#39;person&#39;, password=&#39;password12345&#39;),
+121:            dict(one=1, pwd=&#39;$ecret k3y&#39;, url=&#39;https://username:password12345@foo.com/login/&#39;,
+125:                 invocation=dict(module_args=dict(password=OMIT, token=None, username=&#39;person&#39;))),
+128:            dict(username=&#39;person&#39;, password=&#39;$ecret k3y&#39;),
+133:                 invocation=dict(module_args=dict(password=OMIT, token=None, username=&#39;person&#39;))),
+139:                             (({&#39;username&#39;: {}, &#39;password&#39;: {&#39;no_log&#39;: True}, &#39;token&#39;: {&#39;no_log&#39;: True}}, s, r, e)
+151:                             (({&#39;username&#39;: {}, &#39;password&#39;: {&#39;no_log&#39;: True}, &#39;token&#39;: {&#39;no_log&#39;: True}}, s, r, e)</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 35</span>
+    <strong>run_bash</strong>
+    <span class="muted">sed -n &#39;100,160p&#39; test/units/module_utils/basic/test_exit_json.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;sed -n &#39;100,160p&#39; test/units/module_utils/basic/test_exit_json.py&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+assert ctx.value.args[0] == error_msg
+
+
+class TestAnsibleModuleExitValuesRemoved:
+    &#34;&#34;&#34;
+    Test that ExitJson and FailJson remove password-like values
+    &#34;&#34;&#34;
+    OMIT = &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;
+
+    DATA = (
+        (
+            dict(username=&#39;person&#39;, password=&#39;$ecret k3y&#39;),
+            dict(one=1, pwd=&#39;$ecret k3y&#39;, url=&#39;https://username:password12345@foo.com/login/&#39;,
+                 not_secret=&#39;following the leader&#39;, msg=&#39;here&#39;),
+            dict(one=1, pwd=OMIT, url=&#39;https://username:password12345@foo.com/login/&#39;,
+                 not_secret=&#39;following the leader&#39;, msg=&#39;here&#39;,
+                 invocation=dict(module_args=dict(password=OMIT, token=None, username=&#39;person&#39;))),
+        ),
+        (
+            dict(username=&#39;person&#39;, password=&#39;password12345&#39;),
+            dict(one=1, pwd=&#39;$ecret k3y&#39;, url=&#39;https://username:password12345@foo.com/login/&#39;,
+                 not_secret=&#39;following the leader&#39;, msg=&#39;here&#39;),
+            dict(one=1, pwd=&#39;$ecret k3y&#39;, url=&#39;https://username:********@foo.com/login/&#39;,
+                 not_secret=&#39;following the leader&#39;, msg=&#39;here&#39;,
+                 invocation=dict(module_args=dict(password=OMIT, token=None, username=&#39;person&#39;))),
+        ),
+        (
+            dict(username=&#39;person&#39;, password=&#39;$ecret k3y&#39;),
+            dict(one=1, pwd=&#39;$ecret k3y&#39;, url=&#39;https://username:$ecret k3y@foo.com/login/&#39;,
+                 not_secret=&#39;following the leader&#39;, msg=&#39;here&#39;),
+            dict(one=1, pwd=OMIT, url=&#39;https://username:********@foo.com/login/&#39;,
+                 not_secret=&#39;following the leader&#39;, msg=&#39;here&#39;,
+                 invocation=dict(module_args=dict(password=OMIT, token=None, username=&#39;person&#39;))),
+        ),
+    )
+
+    # pylint bug: https://github.com/PyCQA/pylint/issues/511
+    @pytest.mark.parametrize(&#39;am, stdin, return_val, expected&#39;,
+                             (({&#39;username&#39;: {}, &#39;password&#39;: {&#39;no_log&#39;: True}, &#39;token&#39;: {&#39;no_log&#39;: True}}, s, r, e)
+                              for s, r, e in DATA)
+... [1004 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 36</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python -m pytest test/units/module_utils/basic/test_no_log.py test/un</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python -m pytest test/units/module_utils/basic/test_no_log.py test/units/module_utils/basic/test_exit_json.py -v 2&gt;&amp;1 | tail -30&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_exits[args2-expected2-stdin2] PASSED [ 57%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_exits[args3-expected3-stdin3] PASSED [ 61%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_exits[args4-expected4-stdin4] PASSED [ 65%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_msg_positional[stdin0] PASSED [ 69%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_msg_as_kwarg_after[stdin0] PASSED [ 73%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitJson::test_fail_json_no_msg[stdin0] PASSED [ 76%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am0-stdin0-return_val0-expected0] PASSED [ 80%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am1-stdin1-return_val1-expected1] PASSED [ 84%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_exit_json_removes_values[am2-stdin2-return_val2-expected2] PASSED [ 88%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am0-stdin0-return_val0-expected0] PASSED [ 92%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am1-stdin1-return_val1-expected1] PASSED [ 96%]
+test/units/module_utils/basic/test_exit_json.py::TestAnsibleModuleExitValuesRemoved::test_fail_json_removes_values[am2-stdin2-return_val2-expected2] PASSED [100%]
+
+=================================== FAILURES ===================================
+___________________ TestRemoveValues.test_strings_to_remove ____________________
+test/units/module_utils/basic/test_no_log.py:135: in test_strings_t
+... [972 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 37</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python3 -c &#34;
+# Verify imports work correctly
+from ansible.module_util</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python3 -c \&#34;\n# Verify imports work correctly\nfrom ansible.module_utils.basic import sanitize_keys, remove_values\nprint(&#39;sanitize_keys:&#39;, sanitize_keys)\nprint(&#39;remove_values:&#39;, remove_values)\n\n# Verify the full feature requirements\n\n# 1. remove_values - does NOT alter key names\nresult = remove_values({&#39;key-password&#39;: &#39;value-password&#39;}, frozenset([&#39;password&#39;]))\nassert result == {&#39;key-password&#39;: &#39;value-********&#39;}, f&#39;Got: {result}&#39;\nprint(&#39;PASS: remove_values does NOT alter key names&#39;)\n\n# ... [3643 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+sanitize_keys: &lt;function sanitize_keys at 0x7ffffe652e50&gt;
+remove_values: &lt;function remove_values at 0x7ffffe652d30&gt;
+PASS: remove_values does NOT alter key names
+PASS: remove_values handles scalars
+PASS: sanitize_keys - non-mapping passthrough
+PASS: sanitize_keys - exact match -&gt; sentinel
+PASS: sanitize_keys - substring match -&gt; asterisks
+PASS: sanitize_keys - ignore_keys preserved
+PASS: sanitize_keys - _ansible prefix preserved
+PASS: sanitize_keys - recursive into nested mappings
+PASS: sanitize_keys - recursive through lists
+PASS: uri module has NO_MODIFY_KEYS with correct keys
+PASS: uri NO_MODIFY_KEYS scenario
+PASS: remove_values accepts bytes no_log_strings
+PASS: sanitize_keys accepts bytes no_log_strings
+
+All feature requirements verified!</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 38</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; git diff --stat</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; git diff --stat&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+lib/ansible/module_utils/basic.py | 100 +++++++++++++++++++++++++++++++++++++-
+ lib/ansible/modules/uri.py        |  11 ++++-
+ 2 files changed, 108 insertions(+), 3 deletions(-)</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 39</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; git diff lib/ansible/module_utils/basic.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; git diff lib/ansible/module_utils/basic.py&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+diff --git a/lib/ansible/module_utils/basic.py b/lib/ansible/module_utils/basic.py
+index 608f390..aa57d42 100644
+--- a/lib/ansible/module_utils/basic.py
++++ b/lib/ansible/module_utils/basic.py
+@@ -411,9 +411,8 @@ def remove_values(value, no_log_strings):
+         old_data, new_data = deferred_removals.popleft()
+         if isinstance(new_data, Mapping):
+             for old_key, old_elem in old_data.items():
+-                new_key = _remove_values_conditions(old_key, no_log_strings, deferred_removals)
+                 new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)
+-                new_data[new_key] = new_elem
++                new_data[old_key] = new_elem
+         else:
+             for elem in old_data:
+                 new_elem = _remove_values_conditions(elem, no_log_strings, deferred_removals)
+@@ -427,6 +426,103 @@ def remove_values(value, no_log_strings):
+     return new_value
+ 
+ 
++def _new_sanitize_container(value, deferred):
++    &#34;&#34;&#34;
++    Helper for :func:`sanitize_keys`.
++
++    If *value* is a container (Mapping, MutableSequence, generic Sequence, or
++    Set) a new, empty container of the appropriate type is created, the
++    *(old, new)* pair is appended to *deferred* so that the main loop can fill
++    it in later, and the new container is returned.  All other values are
++    returned unchanged.
++
++    :arg value: The value to inspect.
++    :arg deferred: A deque to which container pairs are appended.
++    :returns: A new empty container, or *value* itself for scalars.
++    &#34;&#34;&#34;
++    if isinstance(value, Mapping):
++        new_value = type(value)() if isinstance(value, MutableMapping) else {}
++        deferred.append((value, new_value))
++        return new_value
++    if isinstance(value, MutableSequence):
++        new_value = type(value)()
++        deferred.append((value, new_value))
++        return new_value
++    if isinstance(value, Sequence) and not isinstance(value, (text_type, binary_type)):
++        # Non-mu
+... [3260 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 40</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; git diff lib/ansible/modules/uri.py</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; git diff lib/ansible/modules/uri.py&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+diff --git a/lib/ansible/modules/uri.py b/lib/ansible/modules/uri.py
+index 1db9b93..6bf11ec 100644
+--- a/lib/ansible/modules/uri.py
++++ b/lib/ansible/modules/uri.py
+@@ -383,7 +383,7 @@ import shutil
+ import sys
+ import tempfile
+ 
+-from ansible.module_utils.basic import AnsibleModule
++from ansible.module_utils.basic import AnsibleModule, sanitize_keys
+ from ansible.module_utils.six import PY2, iteritems, string_types
+ from ansible.module_utils.six.moves.urllib.parse import urlencode, urlsplit
+ from ansible.module_utils._text import to_native, to_text
+@@ -392,6 +392,12 @@ from ansible.module_utils.urls import fetch_url, prepare_multipart, url_argument
+ 
+ JSON_CANDIDATES = (&#39;text&#39;, &#39;json&#39;, &#39;javascript&#39;)
+ 
++NO_MODIFY_KEYS = frozenset((
++    &#39;msg&#39;, &#39;exception&#39;, &#39;warnings&#39;, &#39;deprecations&#39;, &#39;failed&#39;, &#39;skipped&#39;,
++    &#39;changed&#39;, &#39;rc&#39;, &#39;stdout&#39;, &#39;stderr&#39;, &#39;elapsed&#39;, &#39;path&#39;, &#39;location&#39;,
++    &#39;content_type&#39;,
++))
++
+ 
+ def format_message(err, resp):
+     msg = resp.pop(&#39;msg&#39;)
+@@ -734,6 +740,9 @@ def main():
+     else:
+         u_content = to_text(content, encoding=content_encoding)
+ 
++    if module.no_log_values:
++        uresp = sanitize_keys(uresp, module.no_log_values, NO_MODIFY_KEYS)
++
+     if resp[&#39;status&#39;] not in status_code:
+         uresp[&#39;msg&#39;] = &#39;Status code was %s and not %s: %s&#39; % (resp[&#39;status&#39;], status_code, uresp.get(&#39;msg&#39;, &#39;&#39;))
+         if return_content:</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 41</span>
+    <strong>run_bash</strong>
+<span class="badge unresolved">error</span>    <span class="muted">cd /app &amp;&amp; python -m pytest test/units/module_utils/basic/test_no_log.py -v 2&gt;&amp;1</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python -m pytest test/units/module_utils/basic/test_no_log.py -v 2&gt;&amp;1&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 1
+============================= test session starts ==============================
+platform linux -- Python 3.9.23, pytest-5.4.3, py-1.9.0, pluggy-0.13.1 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+plugins: xdist-1.33.0, rerunfailures-9.0, forked-1.2.0, cov-2.10.0, mock-3.2.0
+collecting ... collected 6 items
+
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_return_datastructure_name PASSED [ 16%]
+test/units/module_utils/basic/test_no_log.py::TestReturnValues::test_unknown_type PASSED [ 33%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_hit_recursion_limit PASSED [ 50%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_no_removal PASSED [ 66%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove RERUN [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove RERUN [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove RERUN [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_strings_to_remove FAILED [ 83%]
+test/units/module_utils/basic/test_no_log.py::TestRemoveValues::test_unknown_type PASSED [100%]
+
+=================================== FAILURES ===================================
+___________________ TestRemoveValues.test_strings_to_remove ____________________
+test/units/module_utils/basic/test_no_log.py:135: in test_strings_to_remove
+    self.assertEqual(remove_values(value, no_log_strings), expected)
+E   AssertionError: {&#39;one[133 chars]R&#39;, &#39;base&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAME[14 chars]&#39;]}]} != {&#39;one[133 chars]R&#39;, &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;: [&#39;V[45 chars]&#39;]}]}
+E     {&#39;one&#39;: 1,
+E      &#39;three&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;,
+E                &#39;musketeers&#39;,
+E                None,
+E   -            {&#39;base&#39;: [&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;, &#39;raquets&#39;],
+E   +            {&#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;: [&#39;VALUE_SPECIFIED
+... [436 characters truncated]</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 42</span>
+    <strong>run_bash</strong>
+    <span class="muted">cd /app &amp;&amp; python3 -c &#34;
+import ansible.module_utils.basic as basic
+# Check that </span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;command&#34;: &#34;cd /app &amp;&amp; python3 -c \&#34;\nimport ansible.module_utils.basic as basic\n# Check that sanitize_keys is accessible\nassert hasattr(basic, &#39;sanitize_keys&#39;), &#39;sanitize_keys not found in basic.py&#39;\nassert hasattr(basic, &#39;remove_values&#39;), &#39;remove_values not found in basic.py&#39;\nassert hasattr(basic, &#39;_new_sanitize_container&#39;), &#39;_new_sanitize_container not found in basic.py&#39;\nprint(&#39;sanitize_keys is accessible from ansible.module_utils.basic&#39;)\nprint(&#39;remove_values is accessible from ansible.module_utils.basic&#39;)\n... [330 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">exit 0
+sanitize_keys is accessible from ansible.module_utils.basic
+remove_values is accessible from ansible.module_utils.basic
+NO_MODIFY_KEYS is defined in uri.py
+NO_MODIFY_KEYS = frozenset({&#39;exception&#39;, &#39;failed&#39;, &#39;rc&#39;, &#39;msg&#39;, &#39;stderr&#39;, &#39;deprecations&#39;, &#39;skipped&#39;, &#39;path&#39;, &#39;changed&#39;, &#39;stdout&#39;, &#39;location&#39;, &#39;content_type&#39;, &#39;elapsed&#39;, &#39;warnings&#39;})</pre>  </div>
+</details>
+<details>
+  <summary>
+    <span class="mono muted">turn 43</span>
+    <strong>done</strong>
+    <span class="muted">
+## Summary of Changes
+
+### 1. `lib/ansible/module_utils/basic.py`
+
+**Modified `</span>
+  </summary>
+  <div class="body">
+<pre class="block">{
+  &#34;summary&#34;: &#34;\n## Summary of Changes\n\n### 1. `lib/ansible/module_utils/basic.py`\n\n**Modified `remove_values`**: Removed the line that called `_remove_values_conditions` on mapping keys. Previously, `remove_values` sanitized both keys AND values of mappings. Now it only sanitizes values, leaving key names unchanged (as required by the feature spec).\n\n**Added `_new_sanitize_container` helper**: A module-level function that creates an appropriate empty container for the `sanitize_keys` deferred-processing approa... [1608 more]&#34;
+}</pre><pre class="block" style="margin-top:8px">acknowledged</pre>  </div>
+</details>
+
+<h2>Force-restored before grading</h2>
+<div class="muted" style="font-size:13px;margin-bottom:8px">
+  <strong>3555</strong> test paths
+  checked out from the base commit, then the test patch re-applied — so a solver
+  that edited or deleted a test gains nothing.
+  Showing the first 20.
+</div>
+<pre class="block">packaging/release/tests/version_helper_test.py
+test/ansible_test/Makefile
+test/ansible_test/unit/test_diff.py
+test/ansible_test/validate-modules-unit/test_validate_modules_regex.py
+test/integration/network-integration.cfg
+test/integration/network-integration.requirements.txt
+test/integration/targets/add_host/aliases
+test/integration/targets/add_host/tasks/main.yml
+test/integration/targets/ansiballz_python/aliases
+test/integration/targets/ansiballz_python/library/check_rlimit_and_maxfd.py
+test/integration/targets/ansiballz_python/library/custom_module.py
+test/integration/targets/ansiballz_python/library/sys_check.py
+test/integration/targets/ansiballz_python/module_utils/custom_util.py
+test/integration/targets/ansiballz_python/tasks/main.yml
+test/integration/targets/ansible-doc/aliases
+test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/MANIFEST.json
+test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/cache/notjsonfile.py
+test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/inventory/statichost.py
+test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/lookup/noop.py
+test/integration/targets/ansible-doc/collections/ansible_collections/testns/testcol/plugins/modules/fakemodule.py
+</pre>
+
+<h2>Solution diff</h2>
+<pre class="block diff"><span class="h">diff --git a/lib/ansible/module_utils/basic.py b/lib/ansible/module_utils/basic.py</span><span class="">index 608f390..aa57d42 100644</span><span class="h">--- a/lib/ansible/module_utils/basic.py</span><span class="h">+++ b/lib/ansible/module_utils/basic.py</span><span class="h">@@ -411,9 +411,8 @@ def remove_values(value, no_log_strings):</span><span class="">         old_data, new_data = deferred_removals.popleft()</span><span class="">         if isinstance(new_data, Mapping):</span><span class="">             for old_key, old_elem in old_data.items():</span><span class="d">-                new_key = _remove_values_conditions(old_key, no_log_strings, deferred_removals)</span><span class="">                 new_elem = _remove_values_conditions(old_elem, no_log_strings, deferred_removals)</span><span class="d">-                new_data[new_key] = new_elem</span><span class="a">+                new_data[old_key] = new_elem</span><span class="">         else:</span><span class="">             for elem in old_data:</span><span class="">                 new_elem = _remove_values_conditions(elem, no_log_strings, deferred_removals)</span><span class="h">@@ -427,6 +426,103 @@ def remove_values(value, no_log_strings):</span><span class="">     return new_value</span><span class=""> </span><span class=""> </span><span class="a">+def _new_sanitize_container(value, deferred):</span><span class="a">+    &#34;&#34;&#34;</span><span class="a">+    Helper for :func:`sanitize_keys`.</span><span class="a">+</span><span class="a">+    If *value* is a container (Mapping, MutableSequence, generic Sequence, or</span><span class="a">+    Set) a new, empty container of the appropriate type is created, the</span><span class="a">+    *(old, new)* pair is appended to *deferred* so that the main loop can fill</span><span class="a">+    it in later, and the new container is returned.  All other values are</span><span class="a">+    returned unchanged.</span><span class="a">+</span><span class="a">+    :arg value: The value to inspect.</span><span class="a">+    :arg deferred: A deque to which container pairs are appended.</span><span class="a">+    :returns: A new empty container, or *value* itself for scalars.</span><span class="a">+    &#34;&#34;&#34;</span><span class="a">+    if isinstance(value, Mapping):</span><span class="a">+        new_value = type(value)() if isinstance(value, MutableMapping) else {}</span><span class="a">+        deferred.append((value, new_value))</span><span class="a">+        return new_value</span><span class="a">+    if isinstance(value, MutableSequence):</span><span class="a">+        new_value = type(value)()</span><span class="a">+        deferred.append((value, new_value))</span><span class="a">+        return new_value</span><span class="a">+    if isinstance(value, Sequence) and not isinstance(value, (text_type, binary_type)):</span><span class="a">+        # Non-mutable sequences (e.g. tuples) are stored as lists temporarily</span><span class="a">+        new_value = []</span><span class="a">+        deferred.append((value, new_value))</span><span class="a">+        return new_value</span><span class="a">+    if isinstance(value, MutableSet):</span><span class="a">+        new_value = type(value)()</span><span class="a">+        deferred.append((value, new_value))</span><span class="a">+        return new_value</span><span class="a">+    if isinstance(value, Set):</span><span class="a">+        new_value = set()</span><span class="a">+        deferred.append((value, new_value))</span><span class="a">+        return new_value</span><span class="a">+    return value</span><span class="a">+</span><span class="a">+</span><span class="a">+def sanitize_keys(obj, no_log_strings, ignore_keys=frozenset()):</span><span class="a">+    &#34;&#34;&#34;Return a copy of *obj* in which every mapping key that contains any</span><span class="a">+    string from *no_log_strings* is redacted.</span><span class="a">+</span><span class="a">+    :arg obj: The object whose mapping keys should be sanitised.  If *obj* is</span><span class="a">+        not a :class:`~collections.abc.Mapping` it is returned unchanged.</span><span class="a">+    :arg no_log_strings: An iterable of strings (text or bytes) whose</span><span class="a">+        occurrences in mapping key names must be masked.  Each element is</span><span class="a">+        converted to a native string via :func:`to_native` before use.</span><span class="a">+    :arg ignore_keys: A :class:`frozenset` of exact key names that must</span><span class="a">+        **not** be sanitised even if they contain a sensitive substring.</span><span class="a">+        Defaults to an empty set.</span><span class="a">+    :returns: A copy of *obj* with sensitive key names masked (substrings</span><span class="a">+        replaced by &#39;********&#39;) or replaced by the sentinel</span><span class="a">+        &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39; when the full key name</span><span class="a">+        matches a sensitive string.  Non-mapping objects are returned</span><span class="a">+        unchanged.</span><span class="a">+</span><span class="a">+    Keys that start with &#39;_ansible&#39; are always preserved regardless of</span><span class="a">+    *no_log_strings*.</span><span class="a">+</span><span class="a">+    Uses an iterative (deferred) approach to avoid hitting Python&#39;s recursion</span><span class="a">+    limit on deeply nested structures.</span><span class="a">+    &#34;&#34;&#34;</span><span class="a">+    no_log_strings = [to_native(s, errors=&#39;surrogate_or_strict&#39;) for s in no_log_strings]</span><span class="a">+</span><span class="a">+    if not no_log_strings or not isinstance(obj, Mapping):</span><span class="a">+        return obj</span><span class="a">+</span><span class="a">+    deferred = deque()</span><span class="a">+    result = _new_sanitize_container(obj, deferred)</span><span class="a">+</span><span class="a">+    while deferred:</span><span class="a">+        old_data, new_data = deferred.popleft()</span><span class="a">+        if isinstance(new_data, Mapping):</span><span class="a">+            for key, value in old_data.items():</span><span class="a">+                new_value = _new_sanitize_container(value, deferred)</span><span class="a">+</span><span class="a">+                key_native = to_native(key, errors=&#39;surrogate_or_strict&#39;)</span><span class="a">+                if key_native in ignore_keys or key_native.startswith(&#39;_ansible&#39;):</span><span class="a">+                    new_key = key_native</span><span class="a">+                elif key_native in no_log_strings:</span><span class="a">+                    new_key = &#39;VALUE_SPECIFIED_IN_NO_LOG_PARAMETER&#39;</span><span class="a">+                else:</span><span class="a">+                    new_key = key_native</span><span class="a">+                    for omit_me in no_log_strings:</span><span class="a">+                        new_key = new_key.replace(omit_me, &#39;*&#39; * 8)</span><span class="a">+</span><span class="a">+                new_data[new_key] = new_value</span><span class="a">+        elif isinstance(new_data, MutableSequence):</span><span class="a">+            for elem in old_data:</span><span class="a">+                new_data.append(_new_sanitize_container(elem, deferred))</span><span class="a">+        elif isinstance(new_data, MutableSet):</span><span class="a">+            for elem in old_data:</span><span class="a">+                new_data.add(_new_sanitize_container(elem, deferred))</span><span class="a">+</span><span class="a">+    return result</span><span class="a">+</span><span class="a">+</span><span class=""> def heuristic_log_sanitize(data, no_log_values=None):</span><span class="">     &#39;&#39;&#39; Remove strings that look like passwords from log messages &#39;&#39;&#39;</span><span class="">     # Currently filters:</span><span class="h">diff --git a/lib/ansible/modules/uri.py b/lib/ansible/modules/uri.py</span><span class="">index 1db9b93..6bf11ec 100644</span><span class="h">--- a/lib/ansible/modules/uri.py</span><span class="h">+++ b/lib/ansible/modules/uri.py</span><span class="h">@@ -383,7 +383,7 @@ import shutil</span><span class=""> import sys</span><span class=""> import tempfile</span><span class=""> </span><span class="d">-from ansible.module_utils.basic import AnsibleModule</span><span class="a">+from ansible.module_utils.basic import AnsibleModule, sanitize_keys</span><span class=""> from ansible.module_utils.six import PY2, iteritems, string_types</span><span class=""> from ansible.module_utils.six.moves.urllib.parse import urlencode, urlsplit</span><span class=""> from ansible.module_utils._text import to_native, to_text</span><span class="h">@@ -392,6 +392,12 @@ from ansible.module_utils.urls import fetch_url, prepare_multipart, url_argument</span><span class=""> </span><span class=""> JSON_CANDIDATES = (&#39;text&#39;, &#39;json&#39;, &#39;javascript&#39;)</span><span class=""> </span><span class="a">+NO_MODIFY_KEYS = frozenset((</span><span class="a">+    &#39;msg&#39;, &#39;exception&#39;, &#39;warnings&#39;, &#39;deprecations&#39;, &#39;failed&#39;, &#39;skipped&#39;,</span><span class="a">+    &#39;changed&#39;, &#39;rc&#39;, &#39;stdout&#39;, &#39;stderr&#39;, &#39;elapsed&#39;, &#39;path&#39;, &#39;location&#39;,</span><span class="a">+    &#39;content_type&#39;,</span><span class="a">+))</span><span class="a">+</span><span class=""> </span><span class=""> def format_message(err, resp):</span><span class="">     msg = resp.pop(&#39;msg&#39;)</span><span class="h">@@ -734,6 +740,9 @@ def main():</span><span class="">     else:</span><span class="">         u_content = to_text(content, encoding=content_encoding)</span><span class=""> </span><span class="a">+    if module.no_log_values:</span><span class="a">+        uresp = sanitize_keys(uresp, module.no_log_values, NO_MODIFY_KEYS)</span><span class="a">+</span><span class="">     if resp[&#39;status&#39;] not in status_code:</span><span class="">         uresp[&#39;msg&#39;] = &#39;Status code was %s and not %s: %s&#39; % (resp[&#39;status&#39;], status_code, uresp.get(&#39;msg&#39;, &#39;&#39;))</span><span class="">         if return_content:</span></pre>
+<footer>
+  Generated by swe-task-harness 0.1.0 · 2026-08-24T21:41:29+00:00 · read-only, no server.
+</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+{
+  "run_id": "01M0TVK4M3BD9CR7VWVVAR2CKG",
+  "task_id": "internetarchive__openlib-9ec945ab821fb156c04c7d2e2810debb",
+  "bundle_digest": "fa08559b42ce960343717614d4568ba34bdd2960e1a0f68468e1224ecf46f10a",
+  "image": "harness/internetarchive__openlib-9ec945ab821fb156c04c7d2e2810debb:base-1340730538b4",
+  "upstream_image": "jefzda/sweap-images:internetarchive.openlibrary-internetarchive__openlibrary-6afdb09df692223c3a31df65cfa92f15e5614c01-v08d8e8889ec945ab821fb156c04c7",
+  "cache_key": "1340730538b469aa959fb26133b711beeb3dab662a4122fd72551a701c123042",
+  "base_commit": "1a3fab3f0b319e0df49dd742ce2ffa0d747d1b44",
+  "solver": {
+    "kind": "agent",
+    "model": "claude-sonnet-4-6",
+    "turns": 16,
+    "cost_usd": 0.44044,
+    "summary": "the agent stopped without calling done"
+  },
+  "outcome": "resolved",
+  "gaming_flags": [],
+  "summary": {
+    "f2p_fixed": 2,
+    "f2p_total": 2,
+    "p2p_regressed": 0,
+    "p2p_total": 4
+  },
+  "tests": [
+    {
+      "id": "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_full_flow",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 1
+    },
+    {
+      "id": "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_is_optional",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 0
+    },
+    {
+      "id": "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_lists",
+      "bucket": "f2p",
+      "baseline": "failed",
+      "post": "passed",
+      "transition": "fixed",
+      "message": "ValueError: Unsupported type: list[int]\nscripts/solr_builder/tests/test_fn_to_cli.py:56: in test_lists\n    cli = FnToCLI(fn)\nscripts/solr_builder/solr_builder/fn_to_cli.py:58: in __init__\n    arg_opts = self.type_to_argparse(annotations[arg])\nscripts/solr_builder/solr_builder/fn_to_cli.py:111: in type_to_argparse\n    raise ValueError(f'Unsupported type: {typ}')\nE   ValueError: Unsupported type: list[int]",
+      "duration_ms": 1
+    },
+    {
+      "id": "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_parse_docs",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 0
+    },
+    {
+      "id": "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_paths",
+      "bucket": "f2p",
+      "baseline": "failed",
+      "post": "passed",
+      "transition": "fixed",
+      "message": "ValueError: Unsupported type: list[pathlib.Path]\nscripts/solr_builder/tests/test_fn_to_cli.py:66: in test_paths\n    cli = FnToCLI(fn)\nscripts/solr_builder/solr_builder/fn_to_cli.py:58: in __init__\n    arg_opts = self.type_to_argparse(annotations[arg])\nscripts/solr_builder/solr_builder/fn_to_cli.py:100: in type_to_argparse\n    return FnToCLI.type_to_argparse(\nscripts/solr_builder/solr_builder/fn_to_cli.py:111: in type_to_argparse\n    raise ValueError(f'Unsupported type: {typ}')\nE   ValueError: Unsupported type: list[pathlib.Path]",
+      "duration_ms": 1
+    },
+    {
+      "id": "scripts/solr_builder/tests/test_fn_to_cli.py::TestFnToCLI::test_type_to_argparse",
+      "bucket": "p2p",
+      "baseline": "passed",
+      "post": "passed",
+      "transition": "held",
+      "message": null,
+      "duration_ms": 0
+    }
+  ],
+  "timings_ms": {
+    "setup": 0,
+    "validate": 18457,
+    "solve": 287949,
+    "grade": 7033
+  },
+  "artifacts": {
+    "solution_diff": "runs/01M0TVK4M3BD9CR7VWVVAR2CKG/solution.diff",
+    "report_json": "runs/01M0TVK4M3BD9CR7VWVVAR2CKG/report.json"
+  },
+  "notes": [],
+  "restored_test_count": 166,
+  "restored_test_paths": [
+    "openlibrary/catalog/add_book/tests/conftest.py",
+    "openlibrary/catalog/add_book/tests/test_add_book.py",
+    "openlibrary/catalog/add_book/tests/test_load_book.py",
+    "openlibrary/catalog/add_book/tests/test_match.py",
+    "openlibrary/catalog/add_book/tests/test_match_names.py",
+    "openlibrary/catalog/marc/tests/test_get_subjects.py",
+    "openlibrary/catalog/marc/tests/test_marc.py",
+    "openlibrary/catalog/marc/tests/test_marc_binary.py",
+    "openlibrary/catalog/marc/tests/test_marc_html.py",
+    "openlibrary/catalog/marc/tests/test_mnemonics.py",
+    "openlibrary/catalog/marc/tests/test_parse.py",
+    "openlibrary/conftest.py",
+    "openlibrary/coverstore/tests/test_archive.py",
+    "openlibrary/coverstore/tests/test_code.py",
+    "openlibrary/coverstore/tests/test_coverstore.py",
+    "openlibrary/coverstore/tests/test_doctests.py",
+    "openlibrary/coverstore/tests/test_webapp.py",
+    "openlibrary/i18n/test_po_files.py",
+    "openlibrary/mocks/tests/test_mock_infobase.py",
+    "openlibrary/mocks/tests/test_mock_memcache.py"
+  ]
+}
