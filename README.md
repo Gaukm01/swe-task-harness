@@ -141,13 +141,13 @@ build step, no external assets. It is regenerated automatically after every
 **The runs index** (`index.html`) — outcome badge, task, solver, f2p/p2p counts,
 gaming flags, and cost:
 
-![Runs index](docs/images/main_page_all_runs.png)
+![Runs index](assets/main_page_all_runs.png)
 
 **A single run** (`run-<id>.html`) — run metadata (digests, image, timings), a
 per-test transition table with expandable failure messages, the agent step
 timeline with expandable tool calls, the solution diff, and per-phase logs:
 
-![Single run detail](docs/images/single_run_e2e_details.png)
+![Single run detail](assets/single_run_e2e_details.png)
 
 ## Exit codes
 

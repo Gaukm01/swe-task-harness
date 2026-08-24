@@ -2,11 +2,9 @@
 .env
 .venv/
 
-# Working notes, not deliverables -- except docs/images/, which the committed
-# DESIGN.md embeds.
+# Working notes, not deliverables
 CLAUDE.md
-docs/*
-!docs/images/
+docs/
 
 # Scratch from development runs. The three DELIVERABLE runs, their database,
 # and the rendered site ARE committed — a reviewer browses the results and

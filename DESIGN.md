@@ -12,7 +12,7 @@ BASE ──┬─ validate lane ─> GUARDED ─> GOLD
        └─ run lane ──────> SOLVE ───> SCORED
 ```
 
-![Container lineage from BASE](docs/images/container_lineage_from_base.png)
+![Container lineage from BASE](assets/container_lineage_from_base.png)
 
 | Phase | Contents | Assertion |
 |---|---|---|
@@ -185,7 +185,7 @@ Per-test status is one of `passed`, `failed`, `error`, `collection_error`,
 output (pytest's junitxml) and process metadata. **Nothing is parsed from
 stdout**, because a test that prints "FAILED" would otherwise confuse grading.
 
-![Run outcome decision tree](docs/images/run_outcome_decision_tree.png)
+![Run outcome decision tree](assets/run_outcome_decision_tree.png)
 
 Two rules do most of the work:
 
@@ -208,7 +208,7 @@ inconclusive, 7 = no Docker).
 
 ### The grading order is the guarantee
 
-![SCORED phase grading order](docs/images/scored_phase_grading_order.png)
+![SCORED phase grading order](assets/scored_phase_grading_order.png)
 
 SCORED is fresh from BASE; the solution diff is the only thing that carries over
 from SOLVE. Tests are then **force-restored from the base commit** (tracked test
