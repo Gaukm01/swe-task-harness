@@ -30,8 +30,9 @@ from harness.core.runtime import ContainerRuntime, ExecResult
 # it with `glob("/tmp/**/*junit*.xml")` and rewrite the file from an atexit hook
 # registered in an ordinary source file, which runs after pytest writes the
 # results and before the harness copies them out. That produced a `resolved`
-# verdict from a solver that changed nothing. See `verify_exit_agreement` for
-# the cross-check that backs this up, and DESIGN.md for the residual risk.
+# verdict from a solver that changed nothing. See `_verify_exit_agreement` in
+# the pytest adapter for the cross-check that backs this up, and the integrity
+# canary below plus DESIGN.md for the residual risk.
 CONTAINER_ARTIFACT_ROOT = "/var/opt"
 
 # Where patches are staged before `git apply`. Unlike results, patches are

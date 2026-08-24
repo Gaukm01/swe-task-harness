@@ -13,8 +13,6 @@ lane's entry point takes the BASE tag and nothing else can be passed instead.
 This module imports nothing from `runtime`. It receives a `ContainerRuntime`
 and calls the protocol, which is what lets the whole state machine be tested
 against `FakeRuntime` with no daemon.
-
-M3 implements BASE. The other four phases land in M4 and M5.
 """
 
 from __future__ import annotations

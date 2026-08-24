@@ -4,8 +4,8 @@ The agent loop never touches the Anthropic SDK directly. It calls
 `Transport.send(turn, request)` and gets a message back. Three implementations
 exist, and the loop cannot tell them apart.
 
-That boundary is the whole reason M6 is affordable. The API key is rate-limited
-to a couple of real runs, so one live run records every exchange to
+That boundary is what makes offline iteration affordable. The API key is
+rate-limited to a couple of real runs, so one live run records every exchange to
 `runs/<id>/llm/NNN.json`, and everything downstream -- parsing, grading,
 reporting, the UI -- is then iterated against the recording for free. It is
 also a genuine reproducibility artifact: the committed example run can be

@@ -5,10 +5,6 @@ anything, then closes it in a `finally`. That ordering is the point: a usage
 error, an unhandled exception, and a crash all still leave a row describing
 what was attempted. Doing it inside a Typer callback would miss every failure
 that happens during argument parsing.
-
-Implemented at M2: `doctor`, `lint`, `log`. The remaining commands are
-registered with their final argument contracts and report the milestone that
-lands them.
 """
 
 from __future__ import annotations
@@ -251,7 +247,7 @@ def validate(
     if repeat != 1:
         raise UsageError(
             "--repeat is not implemented.",
-            fix="Flake detection is on the cut list, after M8. Run `task validate` again "
+            fix="Flake detection is on the cut list. Run `task validate` again "
             "by hand if you need a second opinion.",
         )
 
@@ -490,7 +486,7 @@ def report(
         console.print(str(path))
         return
     if fmt != "json":
-        raise UsageError(f"unknown format {fmt!r}.", fix="Use --format json (html lands in M8).")
+        raise UsageError(f"unknown format {fmt!r}.", fix="Use --format json or html.")
 
     stored = state.require_store().get_run(run_id)
     if stored is None:
