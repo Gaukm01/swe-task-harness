@@ -745,3 +745,47 @@ def test_a_group_that_could_not_run_is_not_accused_of_tampering(bundle, tiny_fix
     )
     assert all(o.status is TestStatus.FAILED for o in run.outcomes)
     assert not any(o.status is TestStatus.INFRA_ERROR for o in run.outcomes)
+
+
+def test_an_unmeasurable_baseline_is_infra_not_a_bad_bundle(bundle):
+    """A crashing test and a wrong bundle are different failures.
+
+    A test that segfaults the interpreter says nothing about whether the task
+    is well-formed. Reporting it as `baseline validation failed` sends whoever
+    reads it to fix a bundle that may be perfectly fine -- the same mistake the
+    SCORED phase used to make with an unappliable diff.
+    """
+    from harness.core.phases import PhaseAssertion, ValidationResult
+    from harness.core.results import Bucket, TestOutcome, TestStatus
+    from harness.core.runtime import ExecResult
+    from harness.core.testrun import TestRun
+
+    def assertion(phase, statuses):
+        run = TestRun(
+            label="x",
+            outcomes=[
+                TestOutcome(test_id=f"t{i}", bucket=Bucket.F2P, status=s)
+                for i, s in enumerate(statuses)
+            ],
+            exec_result=ExecResult(argv=[], exit_code=1, stdout="", stderr="", duration_ms=1),
+            junit_path=None,
+            argv=[],
+        )
+        return PhaseAssertion(phase=phase, image="i", run=run, problems=["boom"])
+
+    infra = ValidationResult(
+        validation_id="v",
+        base=prepare_base.__wrapped__ if False else None,  # unused by the property
+        guarded=assertion(Phase.GUARDED, [TestStatus.INFRA_ERROR]),
+        gold=assertion(Phase.GOLD, [TestStatus.PASSED]),
+    )
+    assert infra.blocked_by_infrastructure
+
+    bad_bundle = ValidationResult(
+        validation_id="v",
+        base=None,
+        # An f2p that already passes: wrong task definition, healthy machine.
+        guarded=assertion(Phase.GUARDED, [TestStatus.PASSED]),
+        gold=assertion(Phase.GOLD, [TestStatus.PASSED]),
+    )
+    assert not bad_bundle.blocked_by_infrastructure

@@ -496,6 +496,26 @@ class ValidationResult:
     def problems(self) -> list[str]:
         return [*self.guarded.problems, *self.gold.problems]
 
+    @property
+    def blocked_by_infrastructure(self) -> bool:
+        """True when validation failed because the tests could not be run at all.
+
+        A bundle whose baseline does not hold and an environment that cannot
+        execute the suite are different failures and deserve different exit
+        codes. A test that segfaults the interpreter, or a run killed at the
+        wall clock, says nothing about whether the task is well-formed --
+        reporting it as `baseline validation failed` sends whoever reads it to
+        fix a bundle that is fine.
+
+        This mirrors what the SCORED phase already does: infrastructure that
+        fails there grades `inconclusive`, never `unresolved`.
+        """
+        return any(
+            outcome.status.is_infra
+            for assertion in (self.guarded, self.gold)
+            for outcome in assertion.outcomes
+        )
+
 
 def apply_patch(
     runtime: ContainerRuntime,

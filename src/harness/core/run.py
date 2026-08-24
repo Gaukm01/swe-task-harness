@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from harness.core.bundle import Bundle
-from harness.core.errors import BaselineValidationError
+from harness.core.errors import BaselineValidationError, GradingInconclusiveError
 from harness.core.diffs import touched_paths
 from harness.core.gaming import detect_gaming_flags
 from harness.core.phases import (
@@ -142,6 +142,15 @@ def execute_run(
     timings.validate = clock.lap()
 
     if not validation.ok:
+        if validation.blocked_by_infrastructure:
+            # Same distinction the CLI makes: the environment failed, not the
+            # bundle. Aborting is still correct; blaming the task is not.
+            raise GradingInconclusiveError(
+                f"{bundle.spec.task_id}: the baseline could not be measured. "
+                f"{validation.problems[0]}",
+                fix="The tests did not run to completion. Inspect the environment "
+                f"before re-running. Artifacts are in {artifact_dir / 'pre'}.",
+            )
         # Abort before the solver starts. Grading against a baseline that does
         # not hold would produce a verdict about nothing.
         raise BaselineValidationError(

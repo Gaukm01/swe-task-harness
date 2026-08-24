@@ -92,9 +92,9 @@ bugs, four tests that pass at base and two that do not.
 | 1 | unexpected error |
 | 2 | usage error |
 | 3 | bundle invalid |
-| 4 | baseline validation failed |
+| 4 | baseline validation failed — the *bundle* is wrong |
 | 5 | solver failed |
-| 6 | grading inconclusive (infrastructure, not the solution) — raised after artifacts are written |
+| 6 | inconclusive — the *machine* failed, not the bundle or the solution. Raised after artifacts are written, at grading **and** at validation |
 | 7 | docker unavailable |
 
 A caller can tell "this bundle is broken" from "this solver failed" from "the

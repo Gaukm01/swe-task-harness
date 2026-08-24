@@ -286,6 +286,18 @@ def validate(
     render_validation(result, task_id=loaded.spec.task_id, artifact_dir=artifact_dir)
 
     if not result.ok:
+        if result.blocked_by_infrastructure:
+            # The environment could not run the suite. Exit 6, not 4: the
+            # bundle may be perfectly fine, and telling someone to fix it
+            # would send them to the wrong place.
+            raise GradingInconclusiveError(
+                f"{loaded.spec.task_id}: the baseline could not be measured. "
+                f"{result.problems[0]}",
+                fix="The tests did not run to completion -- a crash, a timeout, or a "
+                "missing runner. Inspect the environment with "
+                f"`task shell {validation_id} --phase guarded`. Artifacts are in "
+                f"{artifact_dir}.",
+            )
         # Exit 4 exists so a wrapper can tell "this bundle is broken" from
         # "this solver failed" without reading any output.
         raise BaselineValidationError(
