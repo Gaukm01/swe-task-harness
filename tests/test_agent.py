@@ -106,12 +106,37 @@ def test_writing_source_is_allowed(runtime, bundle):
     assert runtime.files_written["/workspace/repo/tinylib/intervals.py"] == "code"
 
 
-def test_running_a_graded_selector_is_refused_and_recorded(runtime, bundle):
+def test_running_a_graded_selector_answers_no_differently(runtime, bundle):
+    """Refusing a graded selector was an oracle.
+
+    An agent probing one id at a time and watching for "refused" could
+    enumerate the entire graded set -- confirming precisely what the refusal
+    existed to hide. It protected nothing either: fail-to-pass tests are not in
+    the SOLVE container at all, so the only selectors it could ever match were
+    the pass-to-pass ones, which are ordinary visible repo tests runnable
+    through `run_bash` anyway.
+
+    So it runs, like any other selector. The harness records the attempt; the
+    model learns nothing from it.
+    """
     box = ToolBox(runtime, "c1", "/workspace/repo", bundle.spec)
     graded = bundle.spec.tests.fail_to_pass[0]
     record = box.execute("run_tests", {"selectors": [graded]})
-    assert record.refused
-    assert not runtime.ran("pytest")
+
+    assert not record.refused
+    assert runtime.ran("pytest"), "a graded selector must run like any other"
+    assert "refused" not in record.result
+    # Recorded for the trajectory, not reflected back to the model.
+    assert record.probed_graded
+
+
+def test_an_ungraded_selector_is_indistinguishable_from_a_graded_one(runtime, bundle):
+    box = ToolBox(runtime, "c1", "/workspace/repo", bundle.spec)
+    graded = box.execute("run_tests", {"selectors": [bundle.spec.tests.pass_to_pass[0]]})
+    ungraded = box.execute("run_tests", {"selectors": ["tests/test_intervals.py::test_other"]})
+    # Same shape of answer: nothing in the reply tells the two apart.
+    assert graded.is_error == ungraded.is_error
+    assert graded.result == ungraded.result
 
 
 def test_running_the_visible_suite_is_allowed(runtime, bundle):

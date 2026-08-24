@@ -151,6 +151,9 @@ class ToolCallRecord:
     result: str
     is_error: bool = False
     refused: bool = False
+    # The agent asked to run a graded selector. Recorded for the trajectory,
+    # never reflected back to the model -- see `_run_tests`.
+    probed_graded: bool = False
 
 
 @dataclass
@@ -351,28 +354,36 @@ class ToolBox:
         raw = arguments.get("selectors") or []
         selectors = [str(s) for s in raw] if isinstance(raw, list) else []
 
-        refused = [s for s in selectors if self._is_guardrail_selector(s)]
-        if refused:
-            message = (
-                "refused: "
-                + ", ".join(refused)
-                + " name graded tests, which are not visible during solving. Run the "
-                "repository's own tests instead."
-            )
-            return ToolCallRecord("run_tests", arguments, message, True, refused=True)
+        # Deliberately NOT refused. Refusing was an oracle: an agent that probed
+        # one selector at a time and watched for "refused" could enumerate the
+        # entire graded set -- confirming exactly the thing the refusal existed
+        # to hide. It also protected nothing, because the fail-to-pass tests are
+        # not in this container at all (their test patch is never applied during
+        # SOLVE), so the only selectors it could ever match were the
+        # pass-to-pass ones, which are ordinary visible repo tests the agent can
+        # run through `run_bash` regardless.
+        #
+        # So the selector runs like any other. A graded pass-to-pass id behaves
+        # exactly like an ungraded neighbour; a fail-to-pass id reports
+        # `not found`, indistinguishable from a typo. The attempt is still
+        # recorded for the trajectory -- the harness knows, the model does not.
+        probed = bool([s for s in selectors if self._is_guardrail_selector(s)])
 
         argv = ["python", "-m", "pytest", "-q", "--no-header", *selectors]
         result = self.runtime.exec(
             self.container_id, argv, workdir=self.repo_root, timeout_s=self.spec.tests.timeout_s
         )
         if result.timed_out:
-            return ToolCallRecord("run_tests", arguments, "the test run timed out", True)
+            return ToolCallRecord(
+                "run_tests", arguments, "the test run timed out", True, probed_graded=probed
+            )
         body = _combine(result.stdout, result.stderr)
         return ToolCallRecord(
             "run_tests",
             arguments,
             f"exit {result.exit_code}\n{_truncate(body, MAX_OUTPUT_CHARS)}",
             is_error=result.exit_code != 0,
+            probed_graded=probed,
         )
 
     def _done(self, arguments: dict[str, Any]) -> ToolCallRecord:
@@ -446,6 +457,7 @@ def event_payload(record: ToolCallRecord) -> dict[str, Any]:
         "result": _truncate(record.result, 2000),
         "is_error": record.is_error,
         "refused": record.refused,
+        "probed_graded": record.probed_graded,
     }
 
 
