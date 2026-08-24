@@ -247,12 +247,34 @@ class ToolBox:
             )
 
         lines = result.stdout.splitlines()
+        total = len(lines)
         # Models routinely emit stringified numbers; coerce rather than crash.
         start = max(1, _as_int(arguments.get("start_line"), 1))
-        end = _as_int(arguments.get("end_line"), len(lines))
+        end = min(_as_int(arguments.get("end_line"), total), total)
         window = lines[start - 1 : end]
         numbered = "\n".join(f"{start + i:6d}  {line}" for i, line in enumerate(window))
-        return ToolCallRecord("read_file", arguments, _truncate(numbered, MAX_READ_BYTES))
+
+        # Tell the agent what it is looking at. A bare "[N characters
+        # truncated]" gives it no way to know the file is 2,700 lines or that
+        # ranges exist, so it re-reads the same head of the same file over and
+        # over -- observed burning an entire budget on one 110KB file without
+        # ever making an edit. The cost of that silence is the whole run.
+        body = numbered
+        header = f"{path}: {total} lines"
+        if len(numbered) > MAX_READ_BYTES:
+            shown = numbered[:MAX_READ_BYTES]
+            last_shown = start + shown.count("\n")
+            body = shown
+            header = (
+                f"{path}: {total} lines total. Showing lines {start}-{last_shown} only "
+                f"(the rest was too large to include). Read further with "
+                f'read_file(path, start_line={last_shown + 1}), or narrow down first with '
+                f"run_bash(\"grep -n <pattern> {path}\")."
+            )
+        elif end < total or start > 1:
+            header = f"{path}: lines {start}-{end} of {total}"
+
+        return ToolCallRecord("read_file", arguments, f"{header}\n{body}")
 
     def _write_file(self, arguments: dict[str, Any]) -> ToolCallRecord:
         path = str(arguments.get("path", ""))

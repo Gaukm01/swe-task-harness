@@ -263,12 +263,20 @@ no daemon. A Podman implementation would drop in unchanged; it is not written.
 
 ## 6. Known gaps and next steps
 
-**Not demonstrated.** The agent loop is complete, tested against a stub
-transport, and verified end to end against a real container using a scripted
-cassette — but **no live model run has happened**, because no funded API key was
-available. `--solver replay:<run_id>` reproduces a recorded run offline and
-fails loudly on divergence; that machinery is proven, the trajectory it would
-record is not. This is the single largest gap.
+**Demonstrated.** A live run against a real `ansible/ansible` instance grades
+`resolved` in 37 turns for $3.00, with the trajectory showing the behaviour that
+matters: tests pass at turn 30, a *wider* selection fails at turn 31, the agent
+writes a diagnostic script rather than editing blindly, re-reads the regions it
+changed, re-runs, and only then calls `done`. All 37 exchanges are committed
+under `artifacts/agent-run/`, so anyone can replay the run with no API key.
+Full record in `artifacts/agent-run/RUN-LOG.md`.
+
+Two harness defects surfaced only by spending real money, both since fixed:
+`read_file` never reported a file's size, so on a 2,740-line file the agent
+re-read the same head six times and burned an entire budget without writing
+anything; and the prompt-cache breakpoint sat on the system prompt — the one
+part that never grows — leaving 914,821 input tokens uncached against 39,924
+cache reads.
 
 **Real gaps, in the order I would close them:**
 

@@ -294,3 +294,69 @@ def test_replay_needs_a_run_id():
 
     with pytest.raises(UsageError, match="needs a run id"):
         resolve_solver("replay:")
+
+
+def test_reading_a_large_file_says_how_to_read_the_rest(runtime, bundle):
+    """A bare "[N characters truncated]" is why a run once died without an edit.
+
+    The agent re-read the head of a 2,700-line file six times because nothing
+    told it the file's size or that ranges existed.
+    """
+    script_realpath(runtime, "/workspace/repo/big.py")
+    runtime.script(
+        argv_contains("cat"), stdout="\n".join(f"line {i} " + "x" * 200 for i in range(4000))
+    )
+    box = ToolBox(runtime, "c1", "/workspace/repo", bundle.spec)
+    record = box.execute("read_file", {"path": "big.py"})
+
+    assert "4000 lines total" in record.result
+    assert "start_line=" in record.result
+    assert "grep -n" in record.result
+
+
+def test_a_small_file_just_reports_its_size(runtime, bundle):
+    script_realpath(runtime, "/workspace/repo/small.py")
+    runtime.script(argv_contains("cat"), stdout="a = 1\nb = 2\n")
+    box = ToolBox(runtime, "c1", "/workspace/repo", bundle.spec)
+    record = box.execute("read_file", {"path": "small.py"})
+    assert "small.py: 2 lines" in record.result
+    assert "too large" not in record.result
+
+
+def test_the_conversation_prefix_is_cached_not_just_the_system_prompt(runtime, bundle):
+    """Measured on a real run: 914,821 input tokens against 39,924 cache reads.
+
+    A breakpoint on the system prompt alone caches the one part that never
+    grows. The conversation has to carry the breakpoint for the prefix to be
+    reusable.
+    """
+    script_realpath(runtime, "/workspace/repo")
+    transport = StubTransport(
+        [tool_response("list_dir", {"path": "."}), text_response("done")]
+    )
+    AgentSolver(transport).solve(make_context(runtime), bundle)
+
+    for request in transport.seen:
+        last = request["messages"][-1]
+        assert isinstance(last["content"], list), "the final block must be markable"
+        assert last["content"][-1].get("cache_control"), "no breakpoint on the conversation"
+
+
+def test_cache_breakpoints_do_not_accumulate_in_the_loops_history(runtime, bundle):
+    # Applied to a copy at request time; otherwise every turn adds a marker and
+    # the request eventually exceeds the four-breakpoint limit.
+    script_realpath(runtime, "/workspace/repo")
+    transport = StubTransport(
+        [tool_response("list_dir", {"path": "."})] * 3 + [text_response("done")]
+    )
+    AgentSolver(transport).solve(make_context(runtime), bundle)
+
+    final = transport.seen[-1]["messages"]
+    marked = sum(
+        1
+        for m in final
+        if isinstance(m.get("content"), list)
+        for b in m["content"]
+        if isinstance(b, dict) and b.get("cache_control")
+    )
+    assert marked == 1, f"expected exactly one breakpoint, found {marked}"

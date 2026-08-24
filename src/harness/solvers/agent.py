@@ -231,7 +231,7 @@ class AgentSolver:
             "model": self.model,
             "max_tokens": MAX_TOKENS,
             # The system prompt and tool list never change, so caching them
-            # turns 75 turns of resent prefix into 75 cache reads.
+            # turns N turns of resent prefix into N cache reads.
             "system": [
                 {
                     "type": "text",
@@ -240,7 +240,14 @@ class AgentSolver:
                 }
             ],
             "tools": TOOL_DEFINITIONS,
-            "messages": messages,
+            # ...but the system prompt is the part that does NOT grow. Caching
+            # only that cached 1,109 tokens per turn while the conversation --
+            # which reached hundreds of thousands of tokens over 37 turns -- was
+            # re-sent at full price every single time. Measured on a real run:
+            # 914,821 input tokens against 39,924 cache reads. The breakpoint
+            # has to move to the END of the conversation so the whole prefix is
+            # what gets reused.
+            "messages": _with_conversation_cache_breakpoint(messages),
             "thinking": {"type": "adaptive"},
         }
 
@@ -255,6 +262,38 @@ class AgentSolver:
             outcome.notes.append(f"hit the wall-clock ceiling ({self.wall_clock_s:.0f}s)")
             return True
         return False
+
+
+def _with_conversation_cache_breakpoint(
+    messages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Mark the end of the conversation as cacheable.
+
+    Caching is a prefix match, so a breakpoint on the final block makes every
+    turn before it reusable. Applied to a shallow copy at request-build time:
+    the loop's own `messages` list stays free of cache markers, so breakpoints
+    never accumulate and the replay fingerprint (which ignores them) stays
+    stable.
+    """
+    if not messages:
+        return messages
+
+    head, last = messages[:-1], dict(messages[-1])
+    content = last.get("content")
+
+    if isinstance(content, str):
+        last["content"] = [
+            {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}
+        ]
+    elif isinstance(content, list) and content:
+        blocks = [dict(b) if isinstance(b, dict) else b for b in content]
+        if isinstance(blocks[-1], dict):
+            blocks[-1]["cache_control"] = {"type": "ephemeral"}
+        last["content"] = blocks
+    else:
+        return messages
+
+    return [*head, last]
 
 
 def _assistant_text(content: list[dict[str, Any]]) -> str:
