@@ -39,7 +39,12 @@ class RunReport(BaseModel):
     run_id: str
     task_id: str
     bundle_digest: str
+    # The local BASE snapshot tag. Reproducible only on this machine.
     image: str
+    # The upstream image this was built from, and the environment cache key.
+    # Without these, someone holding only report.json cannot pin the environment.
+    upstream_image: str | None = None
+    cache_key: str | None = None
     base_commit: str | None = None
     solver: SolverReport
     outcome: str
@@ -66,6 +71,8 @@ def build_report(result: RunResult, *, artifacts: dict[str, str] | None = None) 
         task_id=result.bundle.spec.task_id,
         bundle_digest=result.bundle.digest,
         image=result.base.image,
+        upstream_image=result.bundle.spec.environment.image,
+        cache_key=result.base.cache_key,
         base_commit=result.base.base_commit_sha or result.bundle.spec.base_commit,
         solver=SolverReport(
             kind=result.solver.kind,

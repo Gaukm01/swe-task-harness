@@ -17,7 +17,7 @@ import secrets
 
 from harness.adapters import get_adapter
 from harness.core.bundle import TaskSpec
-from harness.core.results import Bucket, TestOutcome
+from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.runtime import ContainerRuntime, ExecResult
 
 # Inside the container, junit files go somewhere the repo tree never sees, so a
@@ -68,12 +68,98 @@ def requested_map(spec: TaskSpec) -> dict[str, Bucket]:
     return requested
 
 
+@dataclass(frozen=True)
+class Canary:
+    """A harness-owned test that must fail, used to detect a forged results file.
+
+    Every signal grading reads -- the junit file and the process exit code -- is
+    produced inside a process the solver's own code runs in. pytest has to
+    import the solution to measure it, so arbitrary attacker code executes
+    inside the measuring process by construction, and an `atexit` hook can
+    rewrite the results after pytest writes them and before the harness reads
+    them. Randomising the path and flagging suspicious source only raise the
+    cost of that; neither changes who owns the evidence.
+
+    The canary changes what the attacker must know. It is one extra test,
+    appended to *every* pytest invocation, whose correct result is `failed`. Any
+    blanket forgery -- "delete every <failure>", "set failures=0", "replace the
+    document" -- flips it to passing or drops it, and the run is reported
+    `inconclusive` instead of passing.
+
+    Two details make it hard to route around:
+
+    * it lives **inside the guardrail tests' own directory**, so a forger cannot
+      simply skip entries outside the repo tree;
+    * its name carries a per-run nonce, so it cannot be recognised and spared
+      without already knowing the hidden selector names.
+
+    That last point routes the remaining attack through the guarantee this
+    harness defends best: the graded selector names are never in the container.
+    It is not a proof, and DESIGN.md says so.
+    """
+
+    node_id: str
+    container_path: str
+    source: str
+
+
+def build_canary(spec: TaskSpec, repo_root: str, nonce: str) -> Canary | None:
+    """Place a canary beside the guardrail tests. None if there is nowhere to put it."""
+    selectors = spec.tests.selectors
+    if not selectors:
+        return None
+    first = selectors[0].split("::", 1)[0]
+    directory = first.rsplit("/", 1)[0] if "/" in first else ""
+    token = nonce[:10]
+    module = f"test_hz_{token}"
+    relative = f"{directory}/{module}.py" if directory else f"{module}.py"
+    return Canary(
+        node_id=f"{relative}::test_hz_{token}",
+        container_path=f"{repo_root}/{relative}",
+        source=(
+            "# Written by swe-task-harness. Must report as failed; if it does not,\n"
+            "# the results file was rewritten and the run is graded inconclusive.\n"
+            f"def test_hz_{token}():\n"
+            f'    assert False, "harness integrity canary {token}"\n'
+        ),
+    )
+
+
 def group_by_file(requested: dict[str, Bucket]) -> dict[str, dict[str, Bucket]]:
     """Group selectors by the file they live in, preserving request order."""
     groups: dict[str, dict[str, Bucket]] = {}
     for selector, bucket in requested.items():
         groups.setdefault(selector.split("::", 1)[0], {})[selector] = bucket
     return groups
+
+
+def _canary_applies(outcomes: list[TestOutcome]) -> bool:
+    """Whether the canary's verdict is meaningful for this group.
+
+    Forgery exists to turn failures into passes, so it is only worth checking
+    when the group claims at least one pass. When nothing passed there is
+    nothing a forger could have gained, and demanding the canary anyway
+    produces false alarms: a group whose test file legitimately fails to import
+    aborts before *any* selector runs -- the canary included -- and reporting
+    that as tampering would turn a correct `unresolved` into `inconclusive`.
+    Observed on a real instance whose fail-to-pass file imports a symbol the
+    fix has not added yet, which is the normal baseline shape.
+    """
+    return any(o.status is TestStatus.PASSED for o in outcomes)
+
+
+def _canary_held(outcome: TestOutcome | None) -> bool:
+    """The canary must have run and failed. Anything else means tampering.
+
+    An infra status is not treated as tampering -- a timeout or a missing junit
+    already grades inconclusive through the normal path, and double-reporting
+    it as forgery would be misleading.
+    """
+    if outcome is None:
+        return False
+    if outcome.status.is_infra:
+        return True
+    return outcome.status is TestStatus.FAILED
 
 
 def run_selectors(
@@ -86,6 +172,7 @@ def run_selectors(
     artifact_dir: Path,
     selectors: dict[str, Bucket] | None = None,
     artifact_nonce: str | None = None,
+    canary: Canary | None = None,
 ) -> TestRun:
     """Run the guardrail selectors and classify every one of them.
 
@@ -122,7 +209,10 @@ def run_selectors(
     for index, group in enumerate(groups.values()):
         suffix = label if len(groups) == 1 else f"{label}-{index}"
         container_junit = f"{container_dir}/{suffix}-junit.xml"
-        argv = adapter.run_argv(spec.tests.run_cmd_template, list(group), container_junit)
+        # The canary rides along in every invocation, so a forgery of any one
+        # group's results file has to deal with it.
+        selectors_for_run = list(group) + ([canary.node_id] if canary else [])
+        argv = adapter.run_argv(spec.tests.run_cmd_template, selectors_for_run, container_junit)
         last_argv = argv
 
         exec_result = runtime.exec(
@@ -139,13 +229,35 @@ def run_selectors(
         if exec_result.stderr.strip():
             stderr_parts.append(exec_result.stderr)
 
-        outcomes.extend(
-            adapter.parse(
-                junit_path=host_junit if copied else None,
-                exec_result=exec_result,
-                requested=group,
-            )
+        asked = dict(group)
+        if canary:
+            asked[canary.node_id] = Bucket.P2P
+        parsed = adapter.parse(
+            junit_path=host_junit if copied else None,
+            exec_result=exec_result,
+            requested=asked,
         )
+
+        if canary:
+            verdict = next((o for o in parsed if o.test_id == canary.node_id), None)
+            parsed = [o for o in parsed if o.test_id != canary.node_id]
+            if _canary_applies(parsed) and not _canary_held(verdict):
+                reason = (
+                    "the harness integrity canary did not report as failed "
+                    f"({verdict.status.value if verdict else 'absent'}). The results file "
+                    "does not reflect what the test run produced, so this run says nothing "
+                    "about the solution."
+                )
+                parsed = [
+                    TestOutcome(
+                        test_id=o.test_id,
+                        bucket=o.bucket,
+                        status=TestStatus.INFRA_ERROR,
+                        message=reason,
+                    )
+                    for o in parsed
+                ]
+        outcomes.extend(parsed)
 
     combined_stdout = "\n".join(stdout_parts)
     combined_stderr = "\n".join(stderr_parts)

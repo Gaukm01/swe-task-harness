@@ -650,3 +650,98 @@ def test_a_failure_summary_reports_the_diagnosis_not_the_last_line():
     summary = result.failure_summary()
     assert "multipart.txt" in summary
     assert "last-unrelated" not in summary
+
+
+# -- the integrity canary --------------------------------------------------
+
+
+def test_the_canary_sits_beside_the_guardrail_tests_with_a_nonced_name(bundle):
+    """Outside the repo, a forger could skip it by path; a fixed name, by name."""
+    from harness.core.testrun import build_canary
+
+    a = build_canary(bundle.spec, "/workspace/repo", "aaaaaaaaaaaa")
+    b = build_canary(bundle.spec, "/workspace/repo", "bbbbbbbbbbbb")
+    assert a.node_id.startswith("tests/")
+    assert a.node_id != b.node_id
+    assert "assert False" in a.source
+
+
+def test_a_forged_clean_sweep_is_caught_by_the_canary(bundle, tiny_fixture, tmp_path, key):
+    """The attack that reached a silent `resolved`: every selector forged to passing.
+
+    Content flags miss it (the payload assembles its literals at runtime) and
+    the exit-code check misses it (the payload forces exit 0). The canary is
+    what remains: it must report `failed`, and a blanket forgery flips it.
+    """
+    from harness.core.phases import grade_solution
+    from harness.core.results import TestStatus
+    from harness.core.testrun import build_canary, new_artifact_dir
+
+    runtime = FakeRuntime()
+    canary = build_canary(bundle.spec, "/workspace/repo", NONCE)
+    everything = bundle.spec.tests.pass_to_pass + bundle.spec.tests.fail_to_pass
+    # Forged: all real selectors pass AND the canary passes.
+    runtime.copy_out_payloads[f"{new_artifact_dir(NONCE)}/post-junit.xml"] = junit_for(
+        everything + [canary.node_id], []
+    )
+    base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
+    run, _restored, _img = grade_solution(
+        runtime,
+        bundle,
+        base,
+        "",
+        run_id="01RUN",
+        artifact_dir=tmp_path / "g",
+        artifact_nonce=NONCE,
+    )
+    assert all(o.status is TestStatus.INFRA_ERROR for o in run.outcomes)
+    assert "canary" in run.outcomes[0].message
+    # The canary must never appear in the graded results.
+    assert not any("hz_" in o.test_id for o in run.outcomes)
+
+
+def test_an_honest_run_passes_the_canary_check(bundle, tiny_fixture, tmp_path, key):
+    from harness.core.phases import grade_solution
+    from harness.core.results import TestStatus
+    from harness.core.testrun import build_canary, new_artifact_dir
+
+    runtime = FakeRuntime()
+    canary = build_canary(bundle.spec, "/workspace/repo", NONCE)
+    everything = bundle.spec.tests.pass_to_pass + bundle.spec.tests.fail_to_pass
+    # Honest: real selectors pass, canary correctly fails.
+    runtime.copy_out_payloads[f"{new_artifact_dir(NONCE)}/post-junit.xml"] = junit_for(
+        everything, [canary.node_id]
+    )
+    base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
+    run, _restored, _img = grade_solution(
+        runtime, bundle, base, "", run_id="01RUN",
+        artifact_dir=tmp_path / "g", artifact_nonce=NONCE,
+    )
+    assert all(o.status is TestStatus.PASSED for o in run.outcomes)
+
+
+def test_a_group_that_could_not_run_is_not_accused_of_tampering(bundle, tiny_fixture, tmp_path, key):
+    """A test file that fails to import aborts the group before anything runs.
+
+    The canary never runs either. Demanding it anyway turned a correct
+    `unresolved` into `inconclusive` on a real instance whose fail-to-pass file
+    imports a symbol the fix has not added yet — the normal baseline shape.
+    Forgery only pays when something claims to pass, so that is when the canary
+    is enforced.
+    """
+    from harness.core.phases import grade_solution
+    from harness.core.results import TestStatus
+    from harness.core.testrun import new_artifact_dir
+
+    runtime = FakeRuntime()
+    # Nothing passed and no canary entry: an aborted group, not a forged one.
+    runtime.copy_out_payloads[f"{new_artifact_dir(NONCE)}/post-junit.xml"] = junit_for(
+        [], bundle.spec.tests.selectors
+    )
+    base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
+    run, _r, _i = grade_solution(
+        runtime, bundle, base, "", run_id="01RUN",
+        artifact_dir=tmp_path / "g", artifact_nonce=NONCE,
+    )
+    assert all(o.status is TestStatus.FAILED for o in run.outcomes)
+    assert not any(o.status is TestStatus.INFRA_ERROR for o in run.outcomes)

@@ -136,12 +136,17 @@ def test_a_failing_baseline_aborts_before_the_solver_runs(bundle, tiny_fixture, 
 # -- outcomes -------------------------------------------------------------
 
 
-def _run(runtime, bundle, tiny_fixture, key, tmp_path, solver, post_junit):
+def _run(runtime, bundle, tiny_fixture, key, tmp_path, solver, passed, failed):
+    """Script an HONEST post-run: the given results, plus the canary correctly failing."""
+    from harness.core.testrun import build_canary, new_artifact_dir
+
     guarded_junit, gold_junit = healthy(bundle)
     wire_validation(runtime, bundle, guarded_junit=guarded_junit, gold_junit=gold_junit)
-    from harness.core.testrun import new_artifact_dir
 
-    runtime.copy_out_payloads[f"{new_artifact_dir(NONCE)}/post-junit.xml"] = post_junit
+    canary = build_canary(bundle.spec, "/workspace/repo", NONCE)
+    runtime.copy_out_payloads[f"{new_artifact_dir(NONCE)}/post-junit.xml"] = junit_for(
+        passed, [*failed, canary.node_id]
+    )
     base = prepare_base(runtime, bundle.spec, tiny_fixture, cache_key=key)
     return execute_run(
         runtime,
@@ -157,9 +162,7 @@ def _run(runtime, bundle, tiny_fixture, key, tmp_path, solver, post_junit):
 def test_gold_resolves(bundle, tiny_fixture, key, tmp_path):
     runtime = FakeRuntime()
     everything = bundle.spec.tests.pass_to_pass + bundle.spec.tests.fail_to_pass
-    result = _run(
-        runtime, bundle, tiny_fixture, key, tmp_path, GoldSolver(), junit_for(everything, [])
-    )
+    result = _run(runtime, bundle, tiny_fixture, key, tmp_path, GoldSolver(), everything, [])
     assert result.outcome is Outcome.RESOLVED
 
 
@@ -169,13 +172,8 @@ def test_noop_is_unresolved_with_every_f2p_still_failing(bundle, tiny_fixture, k
     runtime = FakeRuntime()
     f2p = bundle.spec.tests.fail_to_pass
     result = _run(
-        runtime,
-        bundle,
-        tiny_fixture,
-        key,
-        tmp_path,
-        NoopSolver(),
-        junit_for(bundle.spec.tests.pass_to_pass, f2p),
+        runtime, bundle, tiny_fixture, key, tmp_path, NoopSolver(),
+        bundle.spec.tests.pass_to_pass, f2p,
     )
     assert result.outcome is Outcome.UNRESOLVED
     assert all(
@@ -265,3 +263,38 @@ def test_the_results_path_is_unguessable_and_outside_the_repo():
     assert not first.startswith("/tmp")
     # Dot-prefixed: a plain `glob('/var/opt/**/*.xml')` will not descend into it.
     assert "/." in first
+
+
+def test_the_exit_check_depends_on_guarded_rejecting_non_passing_p2p():
+    """Pins a cross-module dependency that is easy to break silently.
+
+    `_verify_exit_agreement` only fires when every selector in a group reports
+    `passed`. That is not as narrow as it looks *because* `assert_guarded`
+    refuses a baseline where any p2p is not passing. Relax that assertion and a
+    group could legitimately contain a non-passing selector, disabling the
+    forgery cross-check without a single test failing.
+    """
+    from harness.core.phases import assert_guarded
+    from harness.core.results import Bucket, TestOutcome, TestStatus
+    from harness.core.runtime import ExecResult
+    from harness.core.testrun import TestRun
+
+    def run(outcomes):
+        return TestRun(
+            label="x",
+            outcomes=outcomes,
+            exec_result=ExecResult(argv=[], exit_code=1, stdout="", stderr="", duration_ms=1),
+            junit_path=None,
+            argv=[],
+        )
+
+    for not_passing in (TestStatus.SKIPPED, TestStatus.FAILED, TestStatus.NOT_FOUND):
+        problems = assert_guarded(
+            run(
+                [
+                    TestOutcome(test_id="f", bucket=Bucket.F2P, status=TestStatus.FAILED),
+                    TestOutcome(test_id="p", bucket=Bucket.P2P, status=not_passing),
+                ]
+            )
+        )
+        assert problems, f"a p2p reporting {not_passing.value} at baseline must be rejected"

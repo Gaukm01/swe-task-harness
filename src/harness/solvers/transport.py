@@ -139,10 +139,34 @@ def _text_of(system: Any) -> str:
 
 
 def _block_shapes(content: Any) -> list[str]:
+    """Describe a message's blocks in a form that survives re-encoding.
+
+    A plain string and a list holding exactly one text block are the same
+    message; only the encoding differs. That distinction matters because the
+    prompt-cache breakpoint rewrites string content into a one-block list to
+    attach `cache_control`, which silently invalidated every cassette recorded
+    before that change -- including the flagship agent run. Divergence detection
+    must fire on a changed *prompt*, never on a changed representation of the
+    same prompt.
+
+    Only the single-block case is collapsed. Inside a multi-block list (an
+    assistant turn of thinking + text + tool_use) the bare type name is kept,
+    because that is what recordings contain and widening it would break them
+    the other way.
+    """
     if isinstance(content, str):
         return [f"text:{len(content)}"]
     if not isinstance(content, list):
         return []
+
+    if len(content) == 1:
+        only = content[0]
+        as_dict = only if isinstance(only, dict) else None
+        kind = str(as_dict.get("type", "?")) if as_dict else str(getattr(only, "type", "?"))
+        if kind == "text":
+            text = as_dict.get("text", "") if as_dict else getattr(only, "text", "")
+            return [f"text:{len(text)}"]
+
     shapes = []
     for block in content:
         if isinstance(block, dict):

@@ -360,3 +360,52 @@ def test_cache_breakpoints_do_not_accumulate_in_the_loops_history(runtime, bundl
         if isinstance(b, dict) and b.get("cache_control")
     )
     assert marked == 1, f"expected exactly one breakpoint, found {marked}"
+
+
+def test_a_golden_cassette_still_replays(tmp_path):
+    """Guards the failure mode that broke every recording at once.
+
+    Recording and replaying with the same code only proves self-consistency.
+    When the cache breakpoint reshaped string content into a one-block list, the
+    fingerprint changed for every cassette ever recorded — and the round-trip
+    test still passed. This pins the *recorded* shape instead.
+    """
+    from harness.solvers.transport import _request_fingerprint
+
+    # A turn-0 request exactly as older cassettes stored it: string content.
+    recorded_request = {
+        "model": "claude-sonnet-4-6",
+        "system": [{"type": "text", "text": "SYS"}],
+        "tools": [{"name": "read_file"}],
+        "messages": [{"role": "user", "content": "hello world"}],
+    }
+    recorded = _request_fingerprint(recorded_request)
+
+    # The same message after the cache breakpoint decorates it.
+    decorated = dict(recorded_request)
+    decorated["messages"] = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "hello world", "cache_control": {"type": "ephemeral"}}
+            ],
+        }
+    ]
+    assert _request_fingerprint(decorated) == recorded, "re-encoding must not read as divergence"
+
+    # A genuinely different prompt still must diverge.
+    changed = dict(recorded_request)
+    changed["messages"] = [{"role": "user", "content": "hello worlds"}]
+    assert _request_fingerprint(changed) != recorded
+
+
+def test_a_multi_block_assistant_turn_keeps_bare_type_names():
+    """Recordings store bare type names inside multi-block lists; widening breaks them."""
+    from harness.solvers.transport import _block_shapes
+
+    blocks = [
+        {"type": "thinking", "thinking": "..."},
+        {"type": "text", "text": "hi"},
+        {"type": "tool_use", "id": "t", "name": "x", "input": {}},
+    ]
+    assert _block_shapes(blocks) == ["thinking", "text", "tool_use"]

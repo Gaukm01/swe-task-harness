@@ -81,47 +81,79 @@ Five mechanisms, each closing a distinct hole:
    repo root — resolving host-side would be checking the wrong filesystem, since
    a symlink means whatever the container says it means.
 
-### The results file, and what "cannot be forged" really means
+### The results file: what is defended, and what is not
 
 A sixth mechanism exists because the first five were not enough.
 
-The junit file that grading reads is written **inside the container the
-solver's code runs in**. An `atexit` hook in an ordinary source file — no test
-path, no test config, invisible to every path-based check — runs *after* pytest
-writes results and *before* the harness copies them out. Appending fifteen lines
-to `tinylib/__init__.py` once produced `resolved`, zero gaming flags, `f2p_fixed
-2/2`, with the function under test never touched.
+The junit file grading reads is written **inside the container the solver's code
+runs in**. That is not incidental — pytest must *import the solution* to measure
+it, so attacker-controlled code executes inside the measuring process by
+construction. An `atexit` hook in an ordinary source file (no test path, no test
+config, invisible to every path-based check) then rewrites the results after
+pytest writes them and before the harness reads them. That produced `resolved`,
+zero flags, `f2p_fixed 2/2`, with the function under test never touched.
 
-Three layers now stand in the way, and none of them is a proof:
+Four layers now stand in the way. **None of them is a proof, and the fourth is
+the only one that a determined attacker must actually solve.**
 
-1. **The path is unguessable.** Results go to a per-run, dot-prefixed directory
-   outside the repo and outside `/tmp`. `glob("/tmp/**/*junit*.xml")` finds
-   nothing, and Python's `glob` does not descend into dot-directories at all.
-2. **The verdict is cross-checked against the exit code.** pytest exits 0 if and
-   only if every selected test passed, and the exit code is observed by the
-   Docker daemon, outside the container. A file claiming a clean sweep beside a
-   non-zero exit is a contradiction no real run produces, and is reported as
-   `infra_error` → `inconclusive`. Failing closed is deliberate: a false
-   `inconclusive` costs a re-run, a false `resolved` corrupts every number.
-3. **The shapes such tampering needs are flagged.** `atexit`, `os._exit`,
-   `sitecustomize`, `pytest_sessionfinish`, references to `junit` — matched
-   against the *added* lines of the solution diff only.
+1. **The path is not obvious.** Results go to a per-run, dot-prefixed directory
+   outside the repo and outside `/tmp`. This stops a hardcoded path and a casual
+   `glob`. It does **not** stop `os.walk("/")`, which finds the file in under a
+   second — you never have to *guess* a path on a filesystem you can read.
+2. **The verdict is cross-checked against the exit code.** pytest exits 0 only
+   if every selected test passed, so a file claiming a clean sweep beside a
+   non-zero exit is reported `infra_error`. This is defeated by one call:
+   `os._exit(0)` sets the status the daemon observes. The exit code is *read*
+   outside the container but *decided* inside it, and only the latter matters
+   for trust.
+3. **Suspicious source is flagged.** `atexit`, `os._exit`, `sitecustomize`,
+   `junit` — matched against the added lines of the diff. Defeated by assembling
+   the literals at runtime (`getattr(__import__("ate" + "xit"), "register")`).
+   String matching is not a control-flow property, and that arms race is not
+   winnable.
+4. **A harness-owned canary must fail.** One extra test, appended to *every*
+   pytest invocation, whose correct result is `failed`. Any blanket forgery —
+   "delete every `<failure>`", "set `failures=0`", "replace the document" —
+   flips it to passing or drops it, and the run grades `inconclusive`.
 
-Measured against the actual attack:
+The canary is what carries the guarantee, so its two details matter. It lives
+**inside the guardrail tests' own directory**, so a forger cannot spare it by
+skipping entries outside the repo tree; and its name carries a **per-run
+nonce**, so it cannot be recognised and left alone without already knowing the
+hidden selector names.
+
+That is the point. Evading the canary requires forging *surgically* — rewriting
+exactly the graded entries while leaving one indistinguishable sibling untouched
+— which requires knowing the graded selector names. And that is the thing this
+harness defends best: the test patch is never applied during SOLVE, no selector
+name appears in the prompt, `run_tests` refuses graded selectors, history is
+truncated, and there is no network. The last attack path is routed through the
+strongest existing guarantee.
+
+Measured against real attacks, all run with `--solver cmd:`:
 
 | attack | outcome |
 |---|---|
-| forge junit, naive `/tmp` glob | `unresolved` + 2 flags |
-| forge junit, scan whole filesystem | times out → `inconclusive` + flags |
-| forge junit, target the real directory | `unresolved` + flags (dot-dir) |
-| forge junit, locate it correctly | `inconclusive` — exit code disagrees |
-| forge junit **and** force `os._exit(0)` | `resolved_suspect` + flags |
+| forge junit at a hardcoded `/tmp` path | `unresolved` + 2 flags |
+| forge at the real directory, no exit forcing | `inconclusive` — exit code disagrees |
+| forge + `os._exit(0)`, literals in plain text | `resolved_suspect` — flagged |
+| **forge + `os.walk` + `os._exit` + obfuscated literals** | **`inconclusive` — canary** |
 
-**The guarantee is therefore precise and worth stating exactly: a solver cannot
-produce a *silent* pass.** It can, by defeating all three layers, reach
-`resolved_suspect` — flagged, visibly. It cannot reach `resolved`. Anyone
-running arbitrary code alongside the tests inherits this class of problem; the
-harness makes the cheap version fail and the expensive version conspicuous.
+The fourth row is the one that matters: before the canary it graded a **silent
+`resolved` with no flags**, which is the failure this whole section exists to
+prevent.
+
+**What is honestly still open.** A solver that (a) locates the results file,
+(b) forces the exit code, and (c) rewrites only the graded entries while leaving
+the canary failing, defeats all four layers. Doing (c) requires the hidden
+selector names, which are not in the container — so the attack is reduced to,
+and no stronger than, the hidden-test protection above. That is a real
+reduction, not a proof, and it is worth stating plainly: **anyone running
+untrusted code inside the process that measures it inherits this class of
+problem.** The fix that would close it properly is to move the results channel
+somewhere the test process cannot write at all — an append-only stream consumed
+as it is produced. That is noted in §6 as the next step rather than claimed here
+as done.
 
 ### Two further honest limits
 
@@ -285,8 +317,14 @@ cache reads.
 
 **Real gaps, in the order I would close them:**
 
-1. **A live agent run**, then a committed cassette so anyone can replay the
-   trajectory with no key at all.
+1. **An append-only results channel.** The canary reduces results forgery to
+   "know the hidden selector names", but the class only closes when the graded
+   signal leaves the container as it is produced — a pytest plugin emitting one
+   nonce-prefixed line per test to stdout, graded from those lines with junit
+   kept for detail. Bytes already flushed cannot be retracted. Costs a plugin
+   per framework, which is why it is next rather than done.
+2. **A committed cassette** from the submission run, recorded against frozen
+   code, so anyone can replay the trajectory with no key at all.
 2. **`before_repo_set_cmd` has no home in the schema.** SWE-Bench Pro ships a
    per-instance setup command (`git reset --hard <sha>; git clean -fd`). The
    current `Environment` allows exactly one of `image`/`dockerfile`/`recipe`,
@@ -328,6 +366,8 @@ useful than one that says where the edges actually are.
 | `restored_test_paths` enumerated ~10k ansible files, making the committed artifact 272KB | looking at the artifact |
 | One unimportable test file made the *entire* suite report `not_found`, because pytest resolves all selectors before running any | preparing a second real instance |
 | **A solver could forge the junit file and grade `resolved` with no flags** | an external review, then reproduced |
+| The forgery fix was itself evadable — obfuscated literals beat the content flags, `os.walk` beat the nonced path, `os._exit(0)` beat the exit-code check | a second external review, then reproduced |
+| The prompt-cache breakpoint reshaped string content into a block list, silently invalidating **every** previously recorded cassette | a second external review |
 | `recipe` and `repo` were accepted by lint and never executed | an external review |
 | Exit code 6 was advertised and never raised; inconclusive runs exited 0 | an external review |
 | A binary file in the solve tree failed `git apply` and killed the run as "baseline invalid" | an external review |

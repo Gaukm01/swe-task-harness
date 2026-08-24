@@ -181,6 +181,12 @@ class PytestAdapter:
         """
         if exec_result.timed_out or not outcomes:
             return outcomes
+        # Only fires when the whole group claims to pass, which is the shape a
+        # forged clean sweep takes. That it is not narrower than it looks
+        # depends on `assert_guarded` rejecting any p2p that is not `passed` at
+        # baseline -- relax that and a group could legitimately contain a
+        # non-passing selector, silently disabling this check. See
+        # test_the_exit_check_depends_on_guarded_rejecting_non_passing_p2p.
         all_passed = all(o.status is TestStatus.PASSED for o in outcomes)
         if not all_passed or exec_result.exit_code == EXIT_OK:
             return outcomes

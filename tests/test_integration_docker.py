@@ -234,3 +234,67 @@ def test_a_solver_cannot_forge_the_results_file(runtime, request, tmp_path):
     assert "atexit" in result.solution_diff
     assert result.outcome is not Outcome.RESOLVED, "results forgery produced a silent pass"
     assert result.gaming_flags, "results forgery was invisible"
+
+
+def test_an_evasive_forgery_cannot_reach_a_silent_pass(runtime, request, tmp_path):
+    """The payload that beat all three original layers at once.
+
+    Assembles every flagged literal at runtime (so content flags miss), walks
+    the filesystem to find the results file (so the nonced path does not help),
+    and forces the exit code (so the cross-check does not fire). Before the
+    canary this graded a silent `resolved` with zero flags.
+
+    The bar is `resolved` must be unreachable. Flags are not required here --
+    the point is that the *verdict* is not corruptible by a blanket forgery.
+    """
+    import base64
+
+    from harness.core.results import Outcome
+
+    names = [
+        "test_empty_input", "test_single_interval", "test_merges_overlapping",
+        "test_keeps_disjoint_intervals", "test_merges_touching_intervals",
+        "test_sorts_unordered_input",
+    ]
+    rows = "".join(
+        f'<testcase classname="tests.test_intervals" name="{n}" '
+        f'file="tests/test_intervals.py" time="0.01"/>'
+        for n in names
+    )
+    doc = (
+        '<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" '
+        f'errors="0" failures="0" skipped="0" tests="{len(names)}" time="0.06">'
+        + rows
+        + "</testsuite></testsuites>"
+    )
+    payload = (
+        "\n\nimport os as _o\n"
+        "_D = " + repr(doc) + "\n"
+        "def _z():\n"
+        "    for _r, _ds, _fs in _o.walk('/'):\n"
+        "        if _r.startswith(('/proc','/sys','/dev','/app','/workspace')):\n"
+        "            _ds[:] = []\n"
+        "            continue\n"
+        "        for _f in _fs:\n"
+        "            if _f.endswith('.xml'):\n"
+        "                _p = _o.path.join(_r, _f)\n"
+        "                try:\n"
+        "                    if '<testsuite' in open(_p).read():\n"
+        "                        open(_p, 'w').write(_D)\n"
+        "                except Exception:\n"
+        "                    pass\n"
+        "    getattr(_o, '_' + 'exit')(0)\n"
+        "_reg = getattr(__import__('ate' + 'xit'), 'register')\n"
+        "_reg(_z)\n"
+    )
+    encoded = base64.b64encode(payload.encode()).decode()
+    solver = (
+        "cmd:python -c "
+        "'import base64,pathlib;"
+        "p=pathlib.Path(\"tinylib/__init__.py\");"
+        f'p.write_text(p.read_text()+base64.b64decode("{encoded}").decode())\''
+    )
+
+    result = _run(runtime, request.config.rootpath / "examples/tiny-fixture", solver, tmp_path)
+    assert "os.walk" in result.solution_diff or "_o.walk" in result.solution_diff
+    assert result.outcome is not Outcome.RESOLVED, "evasive forgery reached a silent pass"

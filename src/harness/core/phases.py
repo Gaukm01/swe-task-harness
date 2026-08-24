@@ -20,6 +20,7 @@ M3 implements BASE. The other four phases land in M4 and M5.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import secrets
 from enum import StrEnum
 from pathlib import Path
 
@@ -31,7 +32,12 @@ from harness.core.results import Bucket, TestOutcome, TestStatus
 from harness.core.runtime import ContainerRuntime, ContainerSpec, ExecResult
 from harness.core.gaming import is_test_infrastructure
 from harness.core.globs import matches_any
-from harness.core.testrun import CONTAINER_SCRATCH_DIR, TestRun, run_selectors
+from harness.core.testrun import (
+    CONTAINER_SCRATCH_DIR,
+    TestRun,
+    build_canary,
+    run_selectors,
+)
 from harness.solvers.base import Solver, SolverContext, SolverResult
 
 # Where the harness expects a repo to live. An image that ships the code
@@ -949,6 +955,18 @@ def grade_solution(
             label="test_patch",
             steps=steps,
         )
+        # Written after force-restore and after the test patch, so nothing
+        # removes it, and inside the guardrail tests' own directory so a forger
+        # cannot skip it by filtering on path.
+        canary = build_canary(spec, root, artifact_nonce or secrets.token_hex(8))
+        if canary:
+            _record(
+                steps,
+                "place integrity canary",
+                runtime.exec(container_id, ["mkdir", "-p", canary.container_path.rsplit("/", 1)[0]]),
+            )
+            runtime.write_file(container_id, canary.container_path, canary.source)
+
         run = run_selectors(
             runtime,
             container_id,
@@ -957,6 +975,7 @@ def grade_solution(
             workdir=root,
             artifact_dir=artifact_dir,
             artifact_nonce=artifact_nonce,
+            canary=canary,
         )
         image = runtime.commit(container_id, phase_tag(spec.task_id, run_id, Phase.SCORED))
     finally:
