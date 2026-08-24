@@ -1,221 +1,180 @@
-# Design
+# Design notes
 
-The whole system is one state machine. Everything else is plumbing.
+The key tradeoffs behind the harness: what was chosen, what it costs, and what
+is left open. For *what* the system is and *how* to run it see
+[`README.md`](README.md); for a component-level walkthrough see
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+The whole system is one state machine; everything else is plumbing.
 
 ```
 BASE ──┬─ validate lane ─> GUARDED ─> GOLD
        └─ run lane ──────> SOLVE ───> SCORED
 ```
 
+![Container lineage from BASE](docs/images/container_lineage_from_base.png)
+
 | Phase | Contents | Assertion |
 |---|---|---|
-| BASE | repo at `base_commit`, deps installed, history truncated, snapshot committed | the test runner executes |
+| BASE | repo at `base_commit`, deps installed, history truncated, snapshotted | the test runner executes |
 | GUARDED | BASE + `test_patch` | every p2p passes, every f2p fails |
-| GOLD | GUARDED + `patch.diff` | everything passes |
+| GOLD | GUARDED + `patch.diff` | everything passes (the task is solvable) |
 | SOLVE | **fresh from BASE**, description only, `--network=none` | the solver produces a diff |
 | SCORED | **fresh from BASE** + solution + force-restored tests + `test_patch` | grading |
 
-Each transition is a `docker commit`, so `task shell <run_id> --phase solve`
-can enter any state the harness passed through. That one decision bought the
-best observability-per-line in the project.
+Each transition is a `docker commit`, so `task shell <run_id> --phase solve` can
+enter any state the harness passed through — the best observability-per-line in
+the project.
 
 ---
 
 ## 1. A bundle is node IDs plus a test patch
 
-A task is a directory: `task.json`, `description.md`, `patch.diff`,
-`test_patch.diff`. The guardrail tests are a **diff**, and which tests matter is
-a list of **framework-native node IDs** (`tests/test_x.py::test_y`).
+A task is a directory — `task.json`, `description.md`, `patch.diff`,
+`test_patch.diff`. Which tests matter is a list of framework-native **node IDs**
+(`tests/test_x.py::test_y`); the tests themselves arrive as a **diff**.
 
-The obvious alternative — a `tests/f2p/` directory of test files — cannot
-express the problem. SWE-bench-style datasets define the test patch as the diff
-of test files between the base and instance commits, and pass-to-pass tests
-*already exist in the base repo*. A directory of files has no way to say "this
-existing test must keep passing." Node IDs plus a patch is not a stylistic
-choice; it is the only encoding that represents the data.
+The obvious alternative — a `tests/f2p/` directory of test files — cannot express
+the problem. SWE-bench-style datasets define the test patch as the diff of test
+files between two commits, and **pass-to-pass tests already exist in the base
+repo**. A directory of files has no way to say "this *existing* test must keep
+passing." Node IDs plus a patch is the only encoding that represents the data.
 
 **What it costs.** You cannot read the guardrail tests as files. `task
-show-tests <bundle>` renders the patch and the selector lists to compensate,
-and `task lint` checks the two patches do not overlap — a gold patch touching a
-test path fails the bundle, because it would be smuggling in the assertions it
-exists to satisfy.
-
-A `tests/f2p/` directory is still accepted as authoring sugar and compiled into
-a test patch.
+show-tests` renders the patch and selectors to compensate, and `task lint`
+rejects a bundle whose gold patch touches a test path (it would smuggle in the
+assertions it exists to satisfy) or whose test patch reaches outside
+`test_path_globs` (those edits would be silently dropped by force-restore).
 
 ---
 
 ## 2. Hidden-test protection, and the threat model
 
 **The threat model is the solver, not the task author.** A bundle is trusted
-input: it is written by whoever runs the harness. The model in the solve
-container is not. Every mechanism below defends the grading signal against the
-thing being graded — and none of them tries to defend against a malicious
-bundle, because a malicious bundle is just a wrong task.
+input — whoever runs the harness wrote it. The model in the solve container is
+not. Every mechanism defends the grading signal against the thing being graded;
+none defends against a malicious bundle, because a malicious bundle is just a
+wrong task.
 
 Five mechanisms, each closing a distinct hole:
 
-1. **SOLVE and SCORED branch from BASE, never from GUARDED or GOLD.** Those two
-   images have the guardrail test files on disk. Reusing one would hand the
-   solver the hidden tests directly. This is why the phase functions take a
-   `BaseResult` rather than a generic image reference — there is no parameter
-   to pass the wrong thing to.
+1. **SOLVE and SCORED branch from BASE**, never from GUARDED or GOLD — those two
+   carry the guardrail test files on disk. The phase functions take a
+   `BaseResult`, so there is no parameter through which the wrong image can be
+   passed.
 2. **Git history is truncated.** BASE prep checks out `base_commit`, removes the
    `origin` remote, deletes `.git`, and re-commits the tree as one synthetic
-   root commit with a fixed author and date. The commits after `base_commit`
-   contain the very fix being asked for; `git log` would otherwise hand them
-   over. Re-initialising also normalizes whatever state a prebuilt image shipped
-   with, and makes every later diff clean.
-3. **Test files are force-restored at grading.** Before the guardrail run:
-   every tracked path matching `test_path_globs` is checked out from the base
-   commit, every *untracked* file matching them is deleted, and only then is
-   `test_patch.diff` applied. A solver that edited, deleted, or added a test
-   gains nothing.
-4. **No network in the solve container.** `--network=none`. An agent with egress
-   could simply fetch the upstream commit containing the fix, which would defeat
-   every other measure on this list.
-5. **A closed tool set.** Six tools exist: `read_file`, `write_file`,
-   `list_dir`, `run_bash`, `run_tests`, `done`. There is no web search and no
-   package install to disable, because those tools are never defined. Paths are
-   resolved with `realpath` **inside the container** and must land under the
-   repo root — resolving host-side would be checking the wrong filesystem, since
-   a symlink means whatever the container says it means.
+   root commit. The commits after `base_commit` contain the very fix being
+   asked for; `git log` would otherwise hand them over.
+3. **Test files are force-restored at grading** (see §below). A solver that
+   edited, deleted, or added a test gains nothing.
+4. **No network in the solve container** (`--network=none`). An agent with
+   egress could fetch the upstream commit containing the fix, defeating
+   everything else.
+5. **A closed tool set** — six tools (`read_file`, `write_file`, `list_dir`,
+   `run_bash`, `run_tests`, `done`). There is no web search or package install
+   to disable, because those tools are never defined. Paths are resolved with
+   `realpath` **inside the container** and must land under the repo root.
+
+### What the agent can and cannot see
+
+The fail-to-pass tests are **hidden**: they are introduced by `test_patch`,
+which is never applied in SOLVE, so they are absent from the container the agent
+works in (verified — a filesystem-wide grep for an f2p test name returns
+nothing). No selector name appears in the prompt, and `run_tests` refuses any
+graded selector.
+
+The pass-to-pass tests, however, **are visible** — and this is a deliberate
+divergence from a strict reading of "hide all guardrail tests." p2p tests are
+*pre-existing files in the base repo*; hiding them would mean handing the agent
+a mutilated repository, which is neither realistic nor achievable without a
+synthetic repo. It is sound because seeing them buys the agent nothing it could
+game with: it cannot tell **which** of the repo's tests are the graded p2p set
+(no names in the prompt, `run_tests` refuses them), it cannot **edit** them
+(path jail + force-restore), and they already pass at baseline, so there is no
+answer to extract. The tests that would leak the *solution* — the f2p tests —
+are the ones that are hidden.
 
 ### The results file: what is defended, and what is not
 
-A sixth mechanism exists because the first five were not enough.
-
 The junit file grading reads is written **inside the container the solver's code
-runs in**. That is not incidental — pytest must *import the solution* to measure
-it, so attacker-controlled code executes inside the measuring process by
-construction. An `atexit` hook in an ordinary source file (no test path, no test
-config, invisible to every path-based check) then rewrites the results after
-pytest writes them and before the harness reads them. That produced `resolved`,
-zero flags, `f2p_fixed 2/2`, with the function under test never touched.
+runs in** — pytest must *import the solution* to measure it, so
+attacker-controlled code runs inside the measuring process by construction. An
+`atexit` hook in an ordinary source file (no test path, no test config) can then
+rewrite the results after pytest writes them and before the harness reads them.
+That once produced `resolved`, zero flags, with the function under test never
+touched.
 
-Four layers now stand in the way. **None of them is a proof, and the fourth is
-the only one that a determined attacker must actually solve.**
+Four layers now stand in the way. **None is a proof; the canary is the one a
+determined attacker must actually solve.**
 
-1. **The path is not obvious.** Results go to a per-run, dot-prefixed directory
-   outside the repo and outside `/tmp`. This stops a hardcoded path and a casual
-   `glob`. It does **not** stop `os.walk("/")`, which finds the file in under a
-   second — you never have to *guess* a path on a filesystem you can read.
-2. **The verdict is cross-checked against the exit code.** pytest exits 0 only
-   if every selected test passed, so a file claiming a clean sweep beside a
-   non-zero exit is reported `infra_error`. This is defeated by one call:
-   `os._exit(0)` sets the status the daemon observes. The exit code is *read*
-   outside the container but *decided* inside it, and only the latter matters
-   for trust.
-3. **Suspicious source is flagged.** `atexit`, `os._exit`, `sitecustomize`,
-   `junit` — matched against the added lines of the diff. Defeated by assembling
-   the literals at runtime (`getattr(__import__("ate" + "xit"), "register")`).
-   String matching is not a control-flow property, and that arms race is not
-   winnable.
-4. **A harness-owned canary must fail.** One extra test, appended to *every*
-   pytest invocation, whose correct result is `failed`. Any blanket forgery —
-   "delete every `<failure>`", "set `failures=0`", "replace the document" —
-   flips it to passing or drops it, and the run grades `inconclusive`.
+1. **The path is not obvious** — results go to a per-run, dot-prefixed directory
+   outside the repo and `/tmp`. Stops a hardcoded path; does not stop
+   `os.walk("/")`.
+2. **The verdict is cross-checked against the exit code** — pytest exits 0 only
+   if every selected test passed, so a clean-sweep file beside a non-zero exit
+   is `infra_error`. Defeated by `os._exit(0)`.
+3. **Suspicious source is flagged** — `atexit`, `os._exit`, `junit`, matched on
+   the diff's added lines. Defeated by assembling literals at runtime.
+4. **A harness-owned canary must fail** — one extra test, appended to every
+   pytest invocation, whose correct result is `failed`. Any *blanket* forgery
+   ("delete every `<failure>`", "set `failures=0`") flips or drops it, and the
+   run grades `inconclusive`. It lives inside the guardrail tests' directory and
+   carries a per-run nonce, so it cannot be recognised and spared without
+   already knowing the hidden selector names.
 
-The canary is what carries the guarantee, so its two details matter. It lives
-**inside the guardrail tests' own directory**, so a forger cannot spare it by
-skipping entries outside the repo tree; and its name carries a **per-run
-nonce**, so it cannot be recognised and left alone without already knowing the
-hidden selector names.
-
-That is the point. Evading the canary requires forging *surgically* — rewriting
-exactly the graded entries while leaving one indistinguishable sibling untouched
-— which requires knowing the graded selector names. And that is the thing this
-harness defends best: the test patch is never applied during SOLVE, no selector
-name appears in the prompt, `run_tests` refuses graded selectors, history is
-truncated, and there is no network. The last attack path is routed through the
-strongest existing guarantee.
-
-Measured against real attacks, all run with `--solver cmd:`:
+Measured against real attacks (all via `--solver cmd:`):
 
 | attack | outcome |
 |---|---|
-| forge junit at a hardcoded `/tmp` path | `unresolved` + 2 flags |
-| forge at the real directory, no exit forcing | `inconclusive` — exit code disagrees |
-| forge + `os._exit(0)`, literals in plain text | `resolved_suspect` — flagged |
-| **forge + `os.walk` + `os._exit` + obfuscated literals** | **`inconclusive` — canary** |
+| forge junit at a hardcoded `/tmp` path | `unresolved` + flags |
+| forge at the real directory, no exit forcing | `inconclusive` (exit disagrees) |
+| forge + `os._exit(0)`, plain literals | `resolved_suspect` (flagged) |
+| forge + `os.walk` + `os._exit` + obfuscated | **`inconclusive` (canary)** |
 
-The fourth row is the one that matters: before the canary it graded a **silent
-`resolved` with no flags**, which is the failure this whole section exists to
-prevent.
+**What is still open, stated plainly.** A solver that locates the file, forces
+the exit code, **and** rewrites only the graded entries while leaving the canary
+failing defeats all four layers — but the last step requires the hidden selector
+names, which are not in the container. The attack is thus reduced to, and no
+stronger than, the hidden-test protection above. Anyone running untrusted code
+inside the process that measures it inherits this class of problem. The proper
+fix — an append-only results stream the test process cannot retract — is listed
+in §6 as next work, not claimed as done.
 
-**What is honestly still open.** A solver that (a) locates the results file,
-(b) forces the exit code, and (c) rewrites only the graded entries while leaving
-the canary failing, defeats all four layers. Doing (c) requires the hidden
-selector names, which are not in the container — so the attack is reduced to,
-and no stronger than, the hidden-test protection above. That is a real
-reduction, not a proof, and it is worth stating plainly: **anyone running
-untrusted code inside the process that measures it inherits this class of
-problem.** The fix that would close it properly is to move the results channel
-somewhere the test process cannot write at all — an append-only stream consumed
-as it is produced. That is noted in §6 as the next step rather than claimed here
-as done.
-
-### Two further honest limits
-
-Force-restore covers `test_path_globs` plus files that *only* configure the test
-runner: `conftest.py`, `pytest.ini`, `jest.config.*`. It deliberately does **not**
-restore `pyproject.toml`, `setup.cfg`, or `package.json`, which carry pytest
-configuration *and* real dependency and packaging changes an honest fix may
-need. Reverting those would break legitimate solutions in order to defend
-against illegitimate ones.
-
-And the globs can be *too broad*. An importer fallback of `test/**` covers
-`test/lib/ansible_test/**`, which in ansible is shipped product source. A
-correct fix there would be reverted by force-restore and then flagged as
-cheating — a false negative dressed as an accusation. The run now emits an
-explicit note when force-restore reverts a path the solution modified, so that
-case is visible rather than inferred from a suspicious test count.
-
-So a solver can still put `[tool.pytest.ini_options] addopts = ...` in
-`pyproject.toml` and have it survive grading. It gets a gaming flag, so the run
-grades `resolved_suspect` — never a silent `resolved`. That is the guarantee
-this design actually makes, and it is weaker than "cheating is impossible".
-
-This limit was found by attacking the harness, not by reasoning about it. A
-solver that wrote a root `conftest.py` rebinding the module under test made
-every guardrail pass *for real* — `conftest.py` matched no `tests/**` glob and
-is imported before test modules. The first run of that attack graded
-`resolved_suspect`. Force-restore was widened in response; the residual gap
-above is what remains.
+**Two honest limits on force-restore.** It restores `test_path_globs` plus
+runner-only config (`conftest.py`, `pytest.ini`) but deliberately **not**
+`pyproject.toml` / `setup.cfg`, which carry real dependency changes an honest
+fix may need — so pytest config placed there survives, gets a gaming flag, and
+grades `resolved_suspect`, never a silent `resolved`. And the importer's broad
+`test/**` fallback can cover shipped source (e.g. ansible's
+`test/lib/ansible_test/**`); a fix there would be reverted and flagged, so the
+run now emits an explicit note when force-restore touches a path the solution
+modified.
 
 ---
 
 ## 3. Isolation: the agent outside, the code inside
 
-The agent loop runs on the **host**. The code lives in the **container**. The
-boundary between them is `docker exec`.
+The agent loop runs on the **host**; the code lives in the **container**; the
+boundary is `docker exec`. This follows from one conflict: the agent needs the
+Anthropic API, and the workspace must have no egress. Put the network boundary
+*between* them and both hold at once.
 
-That is the isolation model, and it follows from a single conflict: the agent
-needs the Anthropic API, and the workspace must have no egress. Put the network
-boundary *between* them and both hold at once. An in-container agent would need
-egress, and egress is the one thing that defeats hidden-test protection outright.
+**Why not an egress-allowlist proxy?** It fails *open* — a hole in the allowlist
+is a silent hole in the grading signal, and it must be correct about DNS, TLS,
+redirects, and every SDK retry path. `--network=none` fails *closed* and has no
+configuration to get wrong.
 
-**Why not an egress-allowlist proxy?** It is a weaker version of the same idea
-with more moving parts. An allowlist that permits `api.anthropic.com` has to be
-correct about DNS, TLS interception, redirects, and every SDK retry path, and it
-fails open — a hole in the allowlist is a hole in the grading signal, silently.
-`--network=none` fails closed and has no configuration to get wrong.
-
-The container also runs with `--cap-drop=ALL`,
-`--security-opt=no-new-privileges`, `--pids-limit`, memory and CPU caps, no
-docker socket, and a wall-clock timeout on every exec. Verified from inside:
-`CapEff: 0000000000000000`, `NoNewPrivs: 1`.
-
-Precisely on privileges: the process keeps whatever uid the image specifies —
-usually **root** — but holds no capabilities and cannot regain any. It is not
-run as an unprivileged user, because SWE-bench instance images install and build
-as root and would break; `ContainerSpec.hardened(user=...)` is available
-per-bundle for images that tolerate it. Root-with-no-capabilities inside a
-network-isolated, disposable container is the tradeoff, and saying so exactly
-beats implying the container is unprivileged.
-
-**What it costs.** Every tool call pays `docker exec` startup, roughly 50ms.
-Irrelevant at agent-loop timescales.
+The solve/score containers also run with `--cap-drop=ALL`,
+`--security-opt=no-new-privileges`, `--pids-limit`, memory/CPU caps, no docker
+socket, and a wall-clock timeout on every exec (verified from inside:
+`CapEff: 0000000000000000`, `NoNewPrivs: 1`). Precisely on privileges: the
+process keeps whatever uid the image ships — usually **root** — but holds no
+capabilities and cannot regain any. It is not run as an unprivileged user
+because SWE-bench images build as root and would break;
+`ContainerSpec.hardened(user=...)` is available per-bundle. Root-with-no-caps in
+a network-isolated, disposable container is the tradeoff, stated exactly rather
+than implied away.
 
 ---
 
@@ -223,154 +182,100 @@ Irrelevant at agent-loop timescales.
 
 Per-test status is one of `passed`, `failed`, `error`, `collection_error`,
 `not_found`, `skipped`, `timeout`, `infra_error` — derived only from structured
-output (pytest's junitxml) and process metadata. **Nothing is ever parsed from
-stdout**, because a test that prints the word "FAILED" would otherwise be enough
-to confuse grading, and a solver can print whatever it likes.
+output (pytest's junitxml) and process metadata. **Nothing is parsed from
+stdout**, because a test that prints "FAILED" would otherwise confuse grading.
+
+![Run outcome decision tree](docs/images/run_outcome_decision_tree.png)
 
 Two rules do most of the work:
 
-**Only `passed` counts as success.** `skipped` is not a pass — otherwise a
-solver satisfies a fail-to-pass test with `@pytest.mark.skip`. `not_found` is
-not a pass and never a skip — a selector that produced no result means a broken
-bundle or a deleted test, and treating it as neutral would let a vanished test
-shrink the denominator silently.
+- **Only `passed` counts as success.** `skipped` is not a pass (else a solver
+  satisfies an f2p with `@pytest.mark.skip`); `not_found` is not a pass and
+  never a skip (a vanished selector must not silently shrink the denominator).
+- **Failure kinds are never conflated.** `timeout` and `infra_error` are the
+  machine failing, not the solution — a container killed at the wall clock has
+  said nothing about the code. Any run touching them grades **`inconclusive`**,
+  checked *before* the pass/fail counts.
 
-**Failure kinds are never conflated.** `timeout` and `infra_error` are the
-machine failing, not the solution. A container killed at the wall clock has said
-nothing about whether the code works. Folding those into `failed` would report a
-correct patch as broken because Docker ran out of memory — so any run touching
-them grades **`inconclusive`**, checked *before* the pass/fail counts, because
-an environment failure means the other counts cannot be trusted.
-
-**`resolved_suspect`** exists for the opposite failure. Gaming flags — the diff
-touched a test path, a test config, a CI file, or the installed framework — are
-scanned from `solution.diff` after grading. They never change a pass into a
-fail, because a flag is a statement about *where* the diff landed, not about
-whether the code works. But a gamed pass must not be indistinguishable from an
+**`resolved_suspect`** is the opposite failure: gaming flags (the diff touched a
+test path, test config, CI, or the framework) never change a pass into a fail —
+a flag is about *where* the diff landed — but a gamed pass must not look like an
 earned one, so the outcome is downgraded and the flags render prominently.
 
-The four outcomes are therefore: `resolved`, `resolved_suspect`, `unresolved`,
-`inconclusive`. A wrapper can tell "the solution failed" from "the harness
-failed" without reading any output — the same reason exit codes are distinct
-(4 = baseline invalid, 5 = solver errored, 6 = grading inconclusive, 7 = no
-Docker).
+A wrapper can therefore tell "the solution failed" from "the harness failed"
+from exit code alone (4 = baseline invalid, 5 = solver errored, 6 = grading
+inconclusive, 7 = no Docker).
+
+### The grading order is the guarantee
+
+![SCORED phase grading order](docs/images/scored_phase_grading_order.png)
+
+SCORED is fresh from BASE; the solution diff is the only thing that carries over
+from SOLVE. Tests are then **force-restored from the base commit** (tracked test
+files checked out, untracked ones deleted — so a solver-added `conftest.py` is
+removed), the real `test_patch` is re-applied on top, the canary is planted, and
+only then do the selectors run. Applying the solution *before* restoring means
+its source edits are present but any test it touched is overwritten.
 
 ---
 
-## 5. Arbitrary tasks: the adapter protocol, and its real limits
+## 5. Arbitrary tasks: the adapter protocol, and its limits
 
-Everything framework-specific sits behind `TestAdapter`: how to prove the runner
-is installed, how to build an argv for a set of selectors, and how to turn a
-finished run into one outcome per requested selector.
+Everything framework-specific sits behind `TestAdapter`: prove the runner is
+installed, build an argv for a set of selectors, turn a finished run into one
+outcome per selector.
 
 **pytest is fully implemented.** The interesting part is mapping a node ID back
-to a junit `<testcase>`. junit records `classname` and `name`, not node IDs, so
-`tests/test_x.py::TestFoo::test_bar` arrives as
-`classname="tests.test_x.TestFoo" name="test_bar"`. Reversing that is ambiguous
-— you cannot tell where the module path ends and the class begins. So the
-mapping runs *forwards*: each requested selector is translated into the pair
-pytest would have written, and looked up. `not_found` then falls out naturally
-rather than being a special case.
+to a junit `<testcase>`, which records `classname`/`name`, not node IDs.
+Reversing that is ambiguous, so the mapping runs *forwards*: each selector is
+translated into the pair pytest would have written, and looked up — `not_found`
+then falls out naturally.
 
-**go and jest are stubs.** They implement `smoke_argv` and share argv
-construction; `parse` raises `NotImplementedError` naming this document. They
-exist so the shape of multi-language support is real rather than claimed. This
-is a genuine limit, not a placeholder that happens to work — the harness will
-lint, build, and validate a Go bundle right up to the point of reading results,
-and then stop.
+**go and jest are stubs** — they share argv construction; `parse` raises
+`NotImplementedError`. They make the shape of multi-language support real rather
+than claimed: the harness will lint, build, and validate a Go bundle right up to
+reading results, then stop. This is an honest limit, and it is the argument for
+the boundary — SWE-Bench Pro's JS rows carry mocha descriptors
+(`test/database.js | ... should return multiple keys`) that cannot share a
+parser with pytest node IDs.
 
-Selector formats differ more than the protocol suggests, which is itself the
-argument for the boundary: SWE-Bench Pro's Python rows carry real pytest node
-IDs, while its JS rows carry mocha descriptors like
-`test/database.js | Test database ... should return multiple keys`. Those cannot
-share a parser.
-
-The container runtime is behind a protocol too (`ContainerRuntime`, declared in
-`core/` because it is what `core` *requires*). `core/` imports nothing from
-`runtime/`, which is what lets the phase machine, grading, force-restore
-ordering, and the path jail be tested against `FakeRuntime` in milliseconds with
-no daemon. A Podman implementation would drop in unchanged; it is not written.
+The container runtime is behind a protocol too (`ContainerRuntime`), declared in
+`core/` because it is what `core` *requires*. `core/` imports nothing from
+`runtime/`, which is what lets the phase machine, grading, force-restore, and the
+path jail be tested against `FakeRuntime` in milliseconds with no daemon. A
+Podman implementation would drop in unchanged; it is not written.
 
 ---
 
 ## 6. Known gaps and next steps
 
-**Demonstrated, not yet shipped.** A live run against a real
-`ansible/ansible` instance grades `resolved` in 37 turns for $3.00, with the
-trajectory showing the behaviour that matters: tests pass at turn 30, a *wider*
-selection fails at turn 31, the agent writes a diagnostic script rather than
-editing blindly, re-reads the regions it changed, re-runs, and only then calls
-`done`. Its cassettes replay to an identical report with zero API calls.
-
-Those artifacts are deliberately **not** in version control yet. They were
-produced while the harness was still changing, and a recorded trajectory is
-only replayable against the prompt and tool set it was recorded with -- the
-divergence check fails loudly otherwise. The submission run will be recorded
-against the final code and committed then.
-
-Two harness defects surfaced only by spending real money, both since fixed:
-`read_file` never reported a file's size, so on a 2,740-line file the agent
-re-read the same head six times and burned an entire budget without writing
-anything; and the prompt-cache breakpoint sat on the system prompt — the one
-part that never grows — leaving 914,821 input tokens uncached against 39,924
-cache reads.
+**Demonstrated end to end.** Three live agent runs on one database, committed
+under `deliverables/` and browsable in the static UI. The most informative did
+*not* pass: on `ansible/ansible` the agent had to *create* `sanitize_keys`, got
+three of four fail-to-pass tests, broke nothing, earned no gaming flags — and
+the harness called it `unresolved`, because 3/4 is not a fix. The per-test
+detail (`collection_error → passed` on the ones it built, `collection_error →
+failed` on the one whose semantics it got wrong) is exactly what a pass/fail
+count cannot tell you. Cassettes replay to identical reports with zero API
+calls.
 
 **Real gaps, in the order I would close them:**
 
 1. **An append-only results channel.** The canary reduces results forgery to
-   "know the hidden selector names", but the class only closes when the graded
+   "know the hidden selector names"; the class only closes when the graded
    signal leaves the container as it is produced — a pytest plugin emitting one
-   nonce-prefixed line per test to stdout, graded from those lines with junit
-   kept for detail. Bytes already flushed cannot be retracted. Costs a plugin
-   per framework, which is why it is next rather than done.
-2. **A committed cassette** from the submission run, recorded against frozen
-   code, so anyone can replay the trajectory with no key at all.
-2. **`before_repo_set_cmd` has no home in the schema.** SWE-Bench Pro ships a
-   per-instance setup command (`git reset --hard <sha>; git clean -fd`). The
-   current `Environment` allows exactly one of `image`/`dockerfile`/`recipe`,
-   and install commands live only inside `recipe`, so an image-based environment
-   that also needs setup commands cannot be expressed. The instance imported
-   here does not need it; many will.
-3. **`--repeat N` flake detection.** The dataset's own construction runs each
-   test set three times and drops inconsistent tests. The harness runs once.
-4. **`task diagnose`** — LLM-as-judge failure classification over a recorded
-   trajectory, using the taxonomy from the SWE-Bench Pro paper.
+   nonce-prefixed line per test to stdout. Bytes already flushed cannot be
+   retracted. Costs a plugin per framework, which is why it is next rather than
+   done.
+2. **Post-clone setup commands.** SWE-Bench Pro ships per-instance setup
+   (`git reset --hard <sha>; git clean -fd`); an image-based environment that
+   also needs setup commands cannot currently express it.
+3. **`--repeat N` flake detection**, mirroring the dataset's own 3× construction.
+4. **`task diagnose`** — LLM-as-judge failure classification over a trajectory.
 5. **Real go and jest adapters.**
-6. **Parallelism.** `--jobs N` is unimplemented. On Apple Silicon, where amd64
-   instance images run under emulation, parallel containers contend for the same
-   emulated CPU and get slower rather than faster — so this is worth less here
-   than it looks.
+6. **Parallelism** (`--jobs N`) — worth less than it looks under amd64 emulation,
+   where parallel containers contend for the same emulated CPU.
 
-**Smaller known rough edges.** The validation cache scans the last 200
-`validation` events rather than using an index. `timings_ms.setup` reads 0
-because BASE preparation happens before the run clock starts. Force-restore on a
-repo like ansible checks out its entire `test/` tree (~10k files) because the
-generic `test/**` fallback glob is broad — safe, but wasteful.
-
----
-
-## Appendix: things that were wrong first
-
-Kept because a design document that only describes the final state is less
-useful than one that says where the edges actually are.
-
-| What | How it surfaced |
-|---|---|
-| ULIDs were not monotonic within a millisecond, while the docstring promised `ORDER BY id` was chronological | a test |
-| `core/phases.py` imported `runtime.base`, violating the layering rule while looking harmless | a type check |
-| An unappliable gold patch exited 1 (unexpected) instead of 4 (baseline invalid) | deliberately corrupting a patch |
-| A root `conftest.py` could fake every guardrail result | attacking the harness with `--solver cmd:` |
-| Agent events referenced a run row written only at the *end*, so the first replay died on a foreign-key error | running it |
-| The replay fingerprint compared tool-result content, which contains pytest durations and diverges every time | replaying against a real container |
-| SWE-Bench Pro's prose fields are JSON-encoded; `description.md` was one unreadable line | reading the imported bundle |
-| `restored_test_paths` enumerated ~10k ansible files, making the committed artifact 272KB | looking at the artifact |
-| One unimportable test file made the *entire* suite report `not_found`, because pytest resolves all selectors before running any | preparing a second real instance |
-| **A solver could forge the junit file and grade `resolved` with no flags** | an external review, then reproduced |
-| The forgery fix was itself evadable — obfuscated literals beat the content flags, `os.walk` beat the nonced path, `os._exit(0)` beat the exit-code check | a second external review, then reproduced |
-| The prompt-cache breakpoint reshaped string content into a block list, silently invalidating **every** previously recorded cassette | a second external review |
-| `recipe` and `repo` were accepted by lint and never executed | an external review |
-| Exit code 6 was advertised and never raised; inconclusive runs exited 0 | an external review |
-| A binary file in the solve tree failed `git apply` and killed the run as "baseline invalid" | an external review |
-| The BASE "repo present" guard could never fire, because Docker creates a missing `--workdir` | an external review |
-| The cache key was computed before the image was pulled, so the first run always missed its own cache | an external review |
-| A model emitting `"start_line": "abc"` crashed the whole run | an external review |
+**Smaller rough edges.** `timings_ms.setup` reads 0 (BASE prep precedes the run
+clock); force-restore on ansible checks out its entire `test/` tree (~10k files)
+because the fallback glob is broad — safe, but wasteful.

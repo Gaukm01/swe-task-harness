@@ -2,9 +2,11 @@
 .env
 .venv/
 
-# Working notes, not deliverables
+# Working notes, not deliverables -- except docs/images/, which the committed
+# DESIGN.md embeds.
 CLAUDE.md
-docs/
+docs/*
+!docs/images/
 
 # Scratch from development runs. The three DELIVERABLE runs, their database,
 # and the rendered site ARE committed — a reviewer browses the results and
@@ -20,3 +22,7 @@ examples/*/*/x/
 
 __pycache__/
 .DS_Store
+
+# SQLite WAL sidecars (transient; the checkpointed harness.db is committed)
+harness.db-shm
+harness.db-wal

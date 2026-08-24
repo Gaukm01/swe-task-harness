@@ -1,39 +1,43 @@
 # Deliverables
 
-Everything the assignment asks for, and where it lives.
+Everything the assignment asks for, and exactly where it lives.
 
-| asked for | here |
+| Asked for | Where |
 |---|---|
-| CLI code + README with usage | repository root: `src/harness/`, [`../README.md`](../README.md) |
-| One example task bundle that validates | [`../examples/tiny-fixture/`](../examples/tiny-fixture/) — offline, builds in ~16s |
-| Evaluation artifact from `task run` | [`evaluation/`](evaluation/) — three real runs, JSON per run |
-| Design notes on key tradeoffs | [`DESIGN-NOTES.md`](DESIGN-NOTES.md) — six sections |
+| **CLI code + README with usage** | the repository — `src/harness/`, [`../README.md`](../README.md) (overview, full command reference, setup) |
+| **One example task bundle that validates** | [`../examples/tiny-fixture/`](../examples/tiny-fixture/) — offline, self-contained, builds in ~16s and validates with zero API calls |
+| **JSON evaluation artifact from `task run`** | [`evaluation/`](evaluation/) — three real agent runs, one JSON report + solution diff each |
+| **Design notes on key tradeoffs** | [`../DESIGN.md`](../DESIGN.md) — six tradeoffs, with the threat model and honest limits |
+
+Supporting docs: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) walks the system end
+to end; the full run records (junit, logs, API cassettes) are under
+[`../runs/`](../runs/) and the browsable UI is
+[`../site/index.html`](../site/index.html).
 
 ---
 
-## The three runs
+## The three evaluation runs
 
-All three are **live agent runs** against a real LLM, on one clean database.
-Browsable at [`../site/index.html`](../site/index.html) — self-contained HTML,
+All three are **live agent runs** (`claude-sonnet-4-6`) on one clean database.
+Open [`../site/index.html`](../site/index.html) — self-contained HTML,
 double-click it.
 
-| # | task | outcome | f2p fixed | turns | cost |
-|---|---|---|---|---|---|
-| 1 | `ansible/ansible` — `no_log` secret redaction | **unresolved** | **3/4** | 44 | $1.9550 |
-| 2 | `internetarchive/openlibrary` — typed CLI args | **resolved** | 2/2 | 16 | $0.4404 |
-| 3 | `tiny-fixture` — interval merge | **resolved** | 2/2 | 5 | $0.0325 |
-| | | | | | **$2.4279** |
+| # | Task | Outcome | f2p fixed | p2p regressed | Turns | Cost |
+|---|---|---|---|---|---|---|
+| 1 | `ansible/ansible` — deterministic `no_log` secret redaction | **unresolved** | **3 / 4** | 0 / 5 | 44 | $1.96 |
+| 2 | `internetarchive/openlibrary` — typed CLI arguments | **resolved** | 2 / 2 | 0 / 4 | 16 | $0.44 |
+| 3 | `tiny-fixture` — interval merge | **resolved** | 2 / 2 | 0 / 4 | 5 | $0.03 |
 
-A fourth row in `task runs` is a **replay** of run 3 — the same cassettes
-played back offline, producing an identical report with **zero API calls**.
+A fourth row in `task runs` is a **replay** of run 3 — the same cassettes played
+back offline, producing an identical report with **zero API calls**.
 
 ### Run 1 is the most informative, and it did not pass
 
-The agent had to *create* `sanitize_keys` in a 2,740-line file. It got three of
-four fail-to-pass tests, broke nothing, and earned no gaming flags — and the
-harness called it `unresolved`, because 3/4 is not a fix.
-
-The per-test detail is the point:
+The agent had to *create* the public function `sanitize_keys` from a
+description. It got three of four fail-to-pass tests, broke none of the five
+pass-to-pass tests, and earned no gaming flags — and the harness called it
+**`unresolved`**, because 3/4 is not a fix. The per-test transitions are the
+point:
 
 ```
 f2p  collection_error -> passed   fixed          test_sanitize_keys_non_dict_types
@@ -43,10 +47,11 @@ f2p  collection_error -> failed   still_failing  test_sanitize_keys_dict
 p2p            passed -> passed   held           (×5)
 ```
 
-`collection_error -> failed` says something precise: the module could not even
-import at baseline (the function did not exist), and now it imports and runs —
-so the agent genuinely built the API, and got one case's semantics wrong. A
-harness that reported only pass/fail counts could not tell you that.
+`collection_error -> passed` says the module could not even *import* at baseline
+(the function did not exist) and now imports and passes — the agent genuinely
+built the API. `collection_error -> failed` on the last one says it built the API
+but got that case's semantics wrong. A harness reporting only a pass/fail count
+could not tell you any of that.
 
 ---
 
@@ -54,31 +59,27 @@ harness that reported only pass/fail counts could not tell you that.
 
 ```bash
 uv run task runs                                    # the four runs
-uv run task report <run_id>                         # the JSON evaluation artifact
-uv run task log <run_id>                            # the agent's full trajectory
+uv run task report 01M0TTR7RH8JFM1Y1TXDBQZB1F       # a JSON evaluation artifact
+uv run task log    01M0TTR7RH8JFM1Y1TXDBQZB1F       # the agent's full trajectory
 uv run task run examples/tiny-fixture --solver replay:01M0TVWVEDKB8182DP39HKXD4T
 ```
 
-The last command replays a recorded run from its committed cassettes
-(`runs/<id>/llm/`). It costs nothing and fails loudly if the prompt or tool set
-has changed since recording — a replay that quietly served stale responses would
-make every artifact here a fiction.
+The last command replays run 3 from its committed cassettes (`../runs/<id>/llm/`)
+— it costs nothing and **fails loudly** if the prompt or tool set changed since
+recording, so a replay can never quietly serve stale responses.
 
-Zero-API-call solvers for checking the harness itself:
+Check the harness itself, also with no key:
 
 ```bash
 uv run task run examples/tiny-fixture --solver gold   # must be `resolved`
 uv run task run examples/tiny-fixture --solver noop   # must be `unresolved`
 ```
 
----
-
 ## What is in `evaluation/`
 
 Per run: `*.report.json` (the graded result — every test with its baseline
 status, post status, and transition) and `*.solution.diff` (what the agent
-actually changed, computed by the harness from the container with
+actually changed, computed by the harness inside the container with
 `git add -A && git diff --cached --binary HEAD`, never taken from the model).
-
-Full artifacts including junit XML, stdout/stderr and API cassettes are under
-`../runs/<run_id>/`.
+The complete artifacts — junit XML, stdout/stderr, and the API cassettes — are
+under `../runs/<run_id>/`.
